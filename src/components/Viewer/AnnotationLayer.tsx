@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   Stage,
   Layer,
@@ -468,19 +468,44 @@ function TextEditor({
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [value, setValue] = useState(annotation.text)
+  // Suppress the very first blur so a focus race in Firefox doesn't silently
+  // delete the empty annotation before the user gets a chance to type.
+  const justMountedRef = useRef(true)
 
-  useEffect(() => {
+  // Focus synchronously after DOM mutations, then again on the next frame as
+  // a safety net for browsers that drop the first focus call.
+  useLayoutEffect(() => {
     inputRef.current?.focus()
     inputRef.current?.select()
+  }, [])
+  useEffect(() => {
+    const t = requestAnimationFrame(() => {
+      if (document.activeElement !== inputRef.current) {
+        inputRef.current?.focus()
+        inputRef.current?.select()
+      }
+      justMountedRef.current = false
+    })
+    return () => cancelAnimationFrame(t)
   }, [])
 
   return (
     <input
+      autoFocus
       ref={inputRef}
       type="text"
+      inputMode="text"
       value={value}
       onChange={(e) => setValue(e.target.value)}
-      onBlur={() => onCommit(value)}
+      onBlur={() => {
+        // If we blur in the same frame as mount (focus never landed), keep
+        // the editor open instead of silently removing an empty annotation.
+        if (justMountedRef.current) {
+          inputRef.current?.focus()
+          return
+        }
+        onCommit(value)
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
           e.preventDefault()
