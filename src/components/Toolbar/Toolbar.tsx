@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAnnotationStore } from '../../stores/annotationStore'
 import { usePdfStore } from '../../stores/pdfStore'
 import { exportPdfWithAnnotations } from '../../lib/export'
@@ -28,21 +28,36 @@ export default function Toolbar() {
   const color = useAnnotationStore((s) => s.color)
   const strokeWidth = useAnnotationStore((s) => s.strokeWidth)
   const annotations = useAnnotationStore((s) => s.annotations)
+  const selectedId = useAnnotationStore((s) => s.selectedId)
   const setTool = useAnnotationStore((s) => s.setTool)
   const setColor = useAnnotationStore((s) => s.setColor)
   const setStrokeWidth = useAnnotationStore((s) => s.setStrokeWidth)
   const undo = useAnnotationStore((s) => s.undo)
   const clearAll = useAnnotationStore((s) => s.clearAll)
+  const remove = useAnnotationStore((s) => s.remove)
 
   const sourceBytes = usePdfStore((s) => s.sourceBytes)
   const fileName = usePdfStore((s) => s.fileName)
   const [exporting, setExporting] = useState(false)
 
+  // Keyboard: Delete / Backspace removes the selected annotation when no input is focused.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return
+      const t = document.activeElement?.tagName
+      if (t === 'INPUT' || t === 'TEXTAREA') return
+      if (!selectedId) return
+      e.preventDefault()
+      remove(selectedId)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selectedId, remove])
+
   async function onExport() {
     if (!sourceBytes || !fileName) return
     setExporting(true)
     try {
-      // sourceBytes is reused across exports; clone so pdf-lib doesn't consume it
       const copy = sourceBytes.slice(0)
       await exportPdfWithAnnotations(copy, annotations, 1.4, fileName)
     } catch (e) {
@@ -98,6 +113,15 @@ export default function Toolbar() {
       </label>
 
       <div className="ml-auto flex items-center gap-2">
+        {selectedId && (
+          <button
+            onClick={() => remove(selectedId)}
+            title="Delete selected (Del)"
+            className="px-3 h-10 rounded bg-red-600 hover:bg-red-500 text-sm font-medium"
+          >
+            Delete
+          </button>
+        )}
         <SignatureMenu />
         <button
           onClick={undo}

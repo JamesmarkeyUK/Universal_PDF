@@ -1,21 +1,63 @@
-import { useRef, useState } from 'react'
-import { Stage, Layer, Line, Rect, Text, Group, Image as KonvaImage } from 'react-konva'
+import { useEffect, useRef, useState } from 'react'
+import {
+  Stage,
+  Layer,
+  Line,
+  Rect,
+  Text,
+  Group,
+  Image as KonvaImage,
+  Transformer
+} from 'react-konva'
 import type Konva from 'konva'
 import { useAnnotationStore } from '../../stores/annotationStore'
 import { useSignatureStore } from '../../stores/signatureStore'
 import { useImage } from '../../lib/useImage'
-import type { ImageAnnotation } from '../../types/annotations'
-
-function SignatureImage({ a }: { a: ImageAnnotation }) {
-  const img = useImage(a.src)
-  if (!img) return null
-  return <KonvaImage image={img} x={a.x} y={a.y} width={a.width} height={a.height} />
-}
+import type { Annotation, ImageAnnotation } from '../../types/annotations'
 
 interface Props {
   pageIndex: number
   width: number
   height: number
+}
+
+// Annotations whose width/height can be freely transformed.
+function isResizable(a: Annotation): boolean {
+  return a.type === 'image' || a.type === 'rect'
+}
+
+function SignatureImage({
+  a,
+  shapeRef,
+  draggable,
+  onClick,
+  onDragEnd,
+  onTransformEnd
+}: {
+  a: ImageAnnotation
+  shapeRef: (n: Konva.Node | null) => void
+  draggable: boolean
+  onClick: () => void
+  onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => void
+  onTransformEnd: (e: Konva.KonvaEventObject<Event>) => void
+}) {
+  const img = useImage(a.src)
+  if (!img) return null
+  return (
+    <KonvaImage
+      ref={shapeRef}
+      image={img}
+      x={a.x}
+      y={a.y}
+      width={a.width}
+      height={a.height}
+      draggable={draggable}
+      onClick={onClick}
+      onTap={onClick}
+      onDragEnd={onDragEnd}
+      onTransformEnd={onTransformEnd}
+    />
+  )
 }
 
 export default function AnnotationLayer({ pageIndex, width, height }: Props) {
@@ -24,18 +66,46 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
   const strokeWidth = useAnnotationStore((s) => s.strokeWidth)
   const fontSize = useAnnotationStore((s) => s.fontSize)
   const allAnnotations = useAnnotationStore((s) => s.annotations)
+  const selectedId = useAnnotationStore((s) => s.selectedId)
   const add = useAnnotationStore((s) => s.add)
+  const update = useAnnotationStore((s) => s.update)
+  const setSelected = useAnnotationStore((s) => s.setSelected)
 
   const annotations = allAnnotations.filter((a) => a.pageIndex === pageIndex)
 
   const drawingRef = useRef(false)
   const [currentLine, setCurrentLine] = useState<number[] | null>(null)
 
+  const trRef = useRef<Konva.Transformer>(null)
+  const shapeRefs = useRef(new Map<string, Konva.Node>())
+
+  // Wire the Transformer up to the currently selected resizable shape on this page.
+  useEffect(() => {
+    const tr = trRef.current
+    if (!tr) return
+    const selected = annotations.find((a) => a.id === selectedId)
+    if (selected && isResizable(selected)) {
+      const node = shapeRefs.current.get(selected.id)
+      if (node) {
+        tr.nodes([node])
+        tr.getLayer()?.batchDraw()
+        return
+      }
+    }
+    tr.nodes([])
+    tr.getLayer()?.batchDraw()
+  }, [selectedId, annotations])
+
   function getPos(e: Konva.KonvaEventObject<PointerEvent>) {
     return e.target.getStage()!.getPointerPosition()!
   }
 
   function onPointerDown(e: Konva.KonvaEventObject<PointerEvent>) {
+    if (tool === 'select') {
+      // Clicking on the empty stage clears the selection.
+      if (e.target === e.target.getStage()) setSelected(null)
+      return
+    }
     const pos = getPos(e)
     if (tool === 'draw') {
       drawingRef.current = true
@@ -92,9 +162,7 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
     const pos = getPos(e)
     setCurrentLine((prev) => {
       if (!prev) return null
-      if (tool === 'rect') {
-        return [prev[0], prev[1], pos.x, pos.y]
-      }
+      if (tool === 'rect') return [prev[0], prev[1], pos.x, pos.y]
       return [...prev, pos.x, pos.y]
     })
   }
@@ -134,6 +202,49 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
     setCurrentLine(null)
   }
 
+  function shapeRefSetter(id: string) {
+    return (node: Konva.Node | null) => {
+      if (node) shapeRefs.current.set(id, node)
+      else shapeRefs.current.delete(id)
+    }
+  }
+
+  function onShapeClick(id: string) {
+    if (tool !== 'select') return
+    setSelected(id)
+  }
+
+  function onShapeDragEnd(a: Annotation, e: Konva.KonvaEventObject<DragEvent>) {
+    const node = e.target
+    if (a.type === 'draw') {
+      // Line was rendered at origin with absolute points; bake the drag offset into the points.
+      const dx = node.x()
+      const dy = node.y()
+      const next = a.points.map((v, i) => (i % 2 === 0 ? v + dx : v + dy))
+      node.position({ x: 0, y: 0 })
+      update(a.id, { points: next })
+    } else {
+      update(a.id, { x: node.x(), y: node.y() } as Partial<Annotation>)
+    }
+  }
+
+  function onShapeTransformEnd(a: Annotation, e: Konva.KonvaEventObject<Event>) {
+    const node = e.target
+    if (a.type === 'image' || a.type === 'rect') {
+      const newWidth = Math.max(8, node.width() * node.scaleX())
+      const newHeight = Math.max(8, node.height() * node.scaleY())
+      node.scaleX(1)
+      node.scaleY(1)
+      update(a.id, {
+        x: node.x(),
+        y: node.y(),
+        width: newWidth,
+        height: newHeight
+      } as Partial<Annotation>)
+    }
+  }
+
+  const selectable = tool === 'select'
   const cursor = tool === 'select' ? 'default' : 'crosshair'
 
   return (
@@ -144,8 +255,7 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
         position: 'absolute',
         inset: 0,
         cursor,
-        touchAction: 'none',
-        pointerEvents: tool === 'select' ? 'none' : 'auto'
+        touchAction: 'none'
       }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -154,23 +264,36 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
     >
       <Layer>
         {annotations.map((a) => {
+          const common = {
+            draggable: selectable,
+            onClick: () => onShapeClick(a.id),
+            onTap: () => onShapeClick(a.id),
+            onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => onShapeDragEnd(a, e),
+            ref: shapeRefSetter(a.id)
+          }
+
           switch (a.type) {
             case 'draw':
               return (
                 <Line
                   key={a.id}
+                  {...common}
+                  x={0}
+                  y={0}
                   points={a.points}
                   stroke={a.color}
                   strokeWidth={a.strokeWidth}
                   lineCap="round"
                   lineJoin="round"
                   tension={0.4}
+                  hitStrokeWidth={Math.max(20, a.strokeWidth + 14)}
                 />
               )
             case 'text':
               return (
                 <Text
                   key={a.id}
+                  {...common}
                   x={a.x}
                   y={a.y}
                   text={a.text}
@@ -182,48 +305,64 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
               return (
                 <Rect
                   key={a.id}
+                  {...common}
                   x={a.x}
                   y={a.y}
                   width={a.width}
                   height={a.height}
                   stroke={a.color}
                   strokeWidth={2}
+                  onTransformEnd={(e) => onShapeTransformEnd(a, e)}
                 />
               )
             case 'tick': {
               const s = a.size
               return (
-                <Line
-                  key={a.id}
-                  points={[a.x, a.y + s * 0.55, a.x + s * 0.35, a.y + s * 0.9, a.x + s, a.y + s * 0.1]}
-                  stroke={a.color}
-                  strokeWidth={3.5}
-                  lineCap="round"
-                  lineJoin="round"
-                />
+                <Group key={a.id} {...common} x={a.x} y={a.y}>
+                  <Line
+                    points={[0, s * 0.55, s * 0.35, s * 0.9, s, s * 0.1]}
+                    stroke={a.color}
+                    strokeWidth={3.5}
+                    lineCap="round"
+                    lineJoin="round"
+                    hitStrokeWidth={24}
+                  />
+                </Group>
               )
             }
             case 'cross': {
               const s = a.size
               return (
-                <Group key={a.id}>
+                <Group key={a.id} {...common} x={a.x} y={a.y}>
                   <Line
-                    points={[a.x, a.y, a.x + s, a.y + s]}
+                    points={[0, 0, s, s]}
                     stroke={a.color}
                     strokeWidth={3.5}
                     lineCap="round"
+                    hitStrokeWidth={20}
                   />
                   <Line
-                    points={[a.x + s, a.y, a.x, a.y + s]}
+                    points={[s, 0, 0, s]}
                     stroke={a.color}
                     strokeWidth={3.5}
                     lineCap="round"
+                    hitStrokeWidth={20}
                   />
                 </Group>
               )
             }
             case 'image':
-              return <SignatureImage key={a.id} a={a} />
+              return (
+                <SignatureImage
+                  key={a.id}
+                  a={a}
+                  shapeRef={shapeRefSetter(a.id)}
+                  draggable={selectable}
+                  onClick={() => onShapeClick(a.id)}
+                  onDragEnd={(e) => onShapeDragEnd(a, e)}
+                  onTransformEnd={(e) => onShapeTransformEnd(a, e)}
+                />
+              )
             default:
               return null
           }
@@ -231,6 +370,7 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
 
         {currentLine && tool === 'draw' && (
           <Line
+            listening={false}
             points={currentLine}
             stroke={color}
             strokeWidth={strokeWidth}
@@ -243,6 +383,7 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
           const [x1, y1, x2, y2] = currentLine
           return (
             <Rect
+              listening={false}
               x={Math.min(x1, x2)}
               y={Math.min(y1, y2)}
               width={Math.abs(x2 - x1)}
@@ -253,6 +394,19 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
             />
           )
         })()}
+
+        <Transformer
+          ref={trRef}
+          rotateEnabled={false}
+          keepRatio={
+            annotations.find((a) => a.id === selectedId)?.type === 'image'
+          }
+          enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
+          boundBoxFunc={(_oldBox, newBox) => {
+            if (newBox.width < 12 || newBox.height < 12) return _oldBox
+            return newBox
+          }}
+        />
       </Layer>
     </Stage>
   )
