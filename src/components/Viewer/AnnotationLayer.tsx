@@ -13,7 +13,7 @@ import type Konva from 'konva'
 import { useAnnotationStore } from '../../stores/annotationStore'
 import { useSignatureStore } from '../../stores/signatureStore'
 import { useImage } from '../../lib/useImage'
-import type { Annotation, ImageAnnotation } from '../../types/annotations'
+import type { Annotation, ImageAnnotation, TextAnnotation } from '../../types/annotations'
 
 interface Props {
   pageIndex: number
@@ -21,7 +21,6 @@ interface Props {
   height: number
 }
 
-// Annotations whose width/height can be freely transformed.
 function isResizable(a: Annotation): boolean {
   return a.type === 'image' || a.type === 'rect'
 }
@@ -69,22 +68,26 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
   const selectedId = useAnnotationStore((s) => s.selectedId)
   const add = useAnnotationStore((s) => s.add)
   const update = useAnnotationStore((s) => s.update)
+  const remove = useAnnotationStore((s) => s.remove)
   const setSelected = useAnnotationStore((s) => s.setSelected)
 
   const annotations = allAnnotations.filter((a) => a.pageIndex === pageIndex)
 
   const drawingRef = useRef(false)
   const [currentLine, setCurrentLine] = useState<number[] | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const editingAnnotation = annotations.find(
+    (a) => a.id === editingId && a.type === 'text'
+  ) as TextAnnotation | undefined
 
   const trRef = useRef<Konva.Transformer>(null)
   const shapeRefs = useRef(new Map<string, Konva.Node>())
 
-  // Wire the Transformer up to the currently selected resizable shape on this page.
   useEffect(() => {
     const tr = trRef.current
     if (!tr) return
     const selected = annotations.find((a) => a.id === selectedId)
-    if (selected && isResizable(selected)) {
+    if (selected && isResizable(selected) && !editingId) {
       const node = shapeRefs.current.get(selected.id)
       if (node) {
         tr.nodes([node])
@@ -94,15 +97,15 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
     }
     tr.nodes([])
     tr.getLayer()?.batchDraw()
-  }, [selectedId, annotations])
+  }, [selectedId, annotations, editingId])
 
   function getPos(e: Konva.KonvaEventObject<PointerEvent>) {
     return e.target.getStage()!.getPointerPosition()!
   }
 
   function onPointerDown(e: Konva.KonvaEventObject<PointerEvent>) {
+    if (editingId) return // ignore stage events while typing
     if (tool === 'select') {
-      // Clicking on the empty stage clears the selection.
       if (e.target === e.target.getStage()) setSelected(null)
       return
     }
@@ -111,19 +114,18 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
       drawingRef.current = true
       setCurrentLine([pos.x, pos.y])
     } else if (tool === 'text') {
-      const text = window.prompt('Enter text:')
-      if (text) {
-        add({
-          id: crypto.randomUUID(),
-          pageIndex,
-          type: 'text',
-          x: pos.x,
-          y: pos.y,
-          text,
-          color,
-          fontSize
-        })
-      }
+      const id = crypto.randomUUID()
+      add({
+        id,
+        pageIndex,
+        type: 'text',
+        x: pos.x,
+        y: pos.y,
+        text: '',
+        color,
+        fontSize
+      })
+      setEditingId(id)
     } else if (tool === 'tick' || tool === 'cross') {
       add({
         id: crypto.randomUUID(),
@@ -214,10 +216,15 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
     setSelected(id)
   }
 
+  function onTextDblClick(a: TextAnnotation) {
+    if (tool !== 'select') return
+    setEditingId(a.id)
+    setSelected(a.id)
+  }
+
   function onShapeDragEnd(a: Annotation, e: Konva.KonvaEventObject<DragEvent>) {
     const node = e.target
     if (a.type === 'draw') {
-      // Line was rendered at origin with absolute points; bake the drag offset into the points.
       const dx = node.x()
       const dy = node.y()
       const next = a.points.map((v, i) => (i % 2 === 0 ? v + dx : v + dy))
@@ -244,170 +251,254 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
     }
   }
 
+  function commitEdit(value: string) {
+    if (!editingAnnotation) return
+    const trimmed = value
+    if (!trimmed.trim()) {
+      remove(editingAnnotation.id)
+    } else {
+      update(editingAnnotation.id, { text: trimmed })
+    }
+    setEditingId(null)
+  }
+
   const selectable = tool === 'select'
   const cursor = tool === 'select' ? 'default' : 'crosshair'
 
   return (
-    <Stage
-      width={width}
-      height={height}
-      style={{
-        position: 'absolute',
-        inset: 0,
-        cursor,
-        touchAction: 'none'
-      }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerLeave={onPointerUp}
-    >
-      <Layer>
-        {annotations.map((a) => {
-          const common = {
-            draggable: selectable,
-            onClick: () => onShapeClick(a.id),
-            onTap: () => onShapeClick(a.id),
-            onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => onShapeDragEnd(a, e),
-            ref: shapeRefSetter(a.id)
-          }
+    <>
+      <Stage
+        width={width}
+        height={height}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          cursor,
+          touchAction: 'none'
+        }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerLeave={onPointerUp}
+      >
+        <Layer>
+          {annotations.map((a) => {
+            const common = {
+              draggable: selectable,
+              onClick: () => onShapeClick(a.id),
+              onTap: () => onShapeClick(a.id),
+              onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) =>
+                onShapeDragEnd(a, e),
+              ref: shapeRefSetter(a.id)
+            }
 
-          switch (a.type) {
-            case 'draw':
-              return (
-                <Line
-                  key={a.id}
-                  {...common}
-                  x={0}
-                  y={0}
-                  points={a.points}
-                  stroke={a.color}
-                  strokeWidth={a.strokeWidth}
-                  lineCap="round"
-                  lineJoin="round"
-                  tension={0.4}
-                  hitStrokeWidth={Math.max(20, a.strokeWidth + 14)}
-                />
-              )
-            case 'text':
-              return (
-                <Text
-                  key={a.id}
-                  {...common}
-                  x={a.x}
-                  y={a.y}
-                  text={a.text}
-                  fill={a.color}
-                  fontSize={a.fontSize}
-                />
-              )
-            case 'rect':
-              return (
-                <Rect
-                  key={a.id}
-                  {...common}
-                  x={a.x}
-                  y={a.y}
-                  width={a.width}
-                  height={a.height}
-                  stroke={a.color}
-                  strokeWidth={2}
-                  onTransformEnd={(e) => onShapeTransformEnd(a, e)}
-                />
-              )
-            case 'tick': {
-              const s = a.size
-              return (
-                <Group key={a.id} {...common} x={a.x} y={a.y}>
+            switch (a.type) {
+              case 'draw':
+                return (
                   <Line
-                    points={[0, s * 0.55, s * 0.35, s * 0.9, s, s * 0.1]}
+                    key={a.id}
+                    {...common}
+                    x={0}
+                    y={0}
+                    points={a.points}
                     stroke={a.color}
-                    strokeWidth={3.5}
+                    strokeWidth={a.strokeWidth}
                     lineCap="round"
                     lineJoin="round"
-                    hitStrokeWidth={24}
+                    tension={0.4}
+                    hitStrokeWidth={Math.max(20, a.strokeWidth + 14)}
                   />
-                </Group>
-              )
-            }
-            case 'cross': {
-              const s = a.size
-              return (
-                <Group key={a.id} {...common} x={a.x} y={a.y}>
-                  <Line
-                    points={[0, 0, s, s]}
+                )
+              case 'text':
+                return (
+                  <Text
+                    key={a.id}
+                    {...common}
+                    x={a.x}
+                    y={a.y}
+                    text={a.text}
+                    fill={a.color}
+                    fontSize={a.fontSize}
+                    visible={a.id !== editingId}
+                    onDblClick={() => onTextDblClick(a)}
+                    onDblTap={() => onTextDblClick(a)}
+                  />
+                )
+              case 'rect':
+                return (
+                  <Rect
+                    key={a.id}
+                    {...common}
+                    x={a.x}
+                    y={a.y}
+                    width={a.width}
+                    height={a.height}
                     stroke={a.color}
-                    strokeWidth={3.5}
-                    lineCap="round"
-                    hitStrokeWidth={20}
+                    strokeWidth={2}
+                    onTransformEnd={(e) => onShapeTransformEnd(a, e)}
                   />
-                  <Line
-                    points={[s, 0, 0, s]}
-                    stroke={a.color}
-                    strokeWidth={3.5}
-                    lineCap="round"
-                    hitStrokeWidth={20}
+                )
+              case 'tick': {
+                const s = a.size
+                return (
+                  <Group key={a.id} {...common} x={a.x} y={a.y}>
+                    <Line
+                      points={[0, s * 0.55, s * 0.35, s * 0.9, s, s * 0.1]}
+                      stroke={a.color}
+                      strokeWidth={3.5}
+                      lineCap="round"
+                      lineJoin="round"
+                      hitStrokeWidth={24}
+                    />
+                  </Group>
+                )
+              }
+              case 'cross': {
+                const s = a.size
+                return (
+                  <Group key={a.id} {...common} x={a.x} y={a.y}>
+                    <Line
+                      points={[0, 0, s, s]}
+                      stroke={a.color}
+                      strokeWidth={3.5}
+                      lineCap="round"
+                      hitStrokeWidth={20}
+                    />
+                    <Line
+                      points={[s, 0, 0, s]}
+                      stroke={a.color}
+                      strokeWidth={3.5}
+                      lineCap="round"
+                      hitStrokeWidth={20}
+                    />
+                  </Group>
+                )
+              }
+              case 'image':
+                return (
+                  <SignatureImage
+                    key={a.id}
+                    a={a}
+                    shapeRef={shapeRefSetter(a.id)}
+                    draggable={selectable}
+                    onClick={() => onShapeClick(a.id)}
+                    onDragEnd={(e) => onShapeDragEnd(a, e)}
+                    onTransformEnd={(e) => onShapeTransformEnd(a, e)}
                   />
-                </Group>
-              )
+                )
+              default:
+                return null
             }
-            case 'image':
-              return (
-                <SignatureImage
-                  key={a.id}
-                  a={a}
-                  shapeRef={shapeRefSetter(a.id)}
-                  draggable={selectable}
-                  onClick={() => onShapeClick(a.id)}
-                  onDragEnd={(e) => onShapeDragEnd(a, e)}
-                  onTransformEnd={(e) => onShapeTransformEnd(a, e)}
-                />
-              )
-            default:
-              return null
-          }
-        })}
+          })}
 
-        {currentLine && tool === 'draw' && (
-          <Line
-            listening={false}
-            points={currentLine}
-            stroke={color}
-            strokeWidth={strokeWidth}
-            lineCap="round"
-            lineJoin="round"
-            tension={0.4}
-          />
-        )}
-        {currentLine && tool === 'rect' && (() => {
-          const [x1, y1, x2, y2] = currentLine
-          return (
-            <Rect
+          {currentLine && tool === 'draw' && (
+            <Line
               listening={false}
-              x={Math.min(x1, x2)}
-              y={Math.min(y1, y2)}
-              width={Math.abs(x2 - x1)}
-              height={Math.abs(y2 - y1)}
+              points={currentLine}
               stroke={color}
-              strokeWidth={2}
-              dash={[6, 4]}
+              strokeWidth={strokeWidth}
+              lineCap="round"
+              lineJoin="round"
+              tension={0.4}
             />
-          )
-        })()}
+          )}
+          {currentLine && tool === 'rect' && (() => {
+            const [x1, y1, x2, y2] = currentLine
+            return (
+              <Rect
+                listening={false}
+                x={Math.min(x1, x2)}
+                y={Math.min(y1, y2)}
+                width={Math.abs(x2 - x1)}
+                height={Math.abs(y2 - y1)}
+                stroke={color}
+                strokeWidth={2}
+                dash={[6, 4]}
+              />
+            )
+          })()}
 
-        <Transformer
-          ref={trRef}
-          rotateEnabled={false}
-          keepRatio={
-            annotations.find((a) => a.id === selectedId)?.type === 'image'
-          }
-          enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
-          boundBoxFunc={(_oldBox, newBox) => {
-            if (newBox.width < 12 || newBox.height < 12) return _oldBox
-            return newBox
+          <Transformer
+            ref={trRef}
+            rotateEnabled={false}
+            keepRatio={
+              annotations.find((a) => a.id === selectedId)?.type === 'image'
+            }
+            enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
+            boundBoxFunc={(_oldBox, newBox) => {
+              if (newBox.width < 12 || newBox.height < 12) return _oldBox
+              return newBox
+            }}
+          />
+        </Layer>
+      </Stage>
+
+      {editingAnnotation && (
+        <TextEditor
+          annotation={editingAnnotation}
+          onCommit={commitEdit}
+          onCancel={() => {
+            if (!editingAnnotation.text.trim()) {
+              remove(editingAnnotation.id)
+            }
+            setEditingId(null)
           }}
         />
-      </Layer>
-    </Stage>
+      )}
+    </>
+  )
+}
+
+function TextEditor({
+  annotation,
+  onCommit,
+  onCancel
+}: {
+  annotation: TextAnnotation
+  onCommit: (value: string) => void
+  onCancel: () => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [value, setValue] = useState(annotation.text)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+    inputRef.current?.select()
+  }, [])
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => onCommit(value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          onCommit(value)
+        } else if (e.key === 'Escape') {
+          e.preventDefault()
+          onCancel()
+        }
+      }}
+      style={{
+        position: 'absolute',
+        left: annotation.x,
+        top: annotation.y,
+        color: annotation.color,
+        fontSize: annotation.fontSize + 'px',
+        fontFamily: 'sans-serif',
+        lineHeight: 1,
+        background: 'transparent',
+        border: '1px dashed #2563eb',
+        outline: 'none',
+        padding: '0 2px',
+        minWidth: '120px',
+        width: Math.max(120, value.length * annotation.fontSize * 0.6 + 24) + 'px',
+        height: annotation.fontSize * 1.25 + 'px',
+        zIndex: 10
+      }}
+    />
   )
 }
