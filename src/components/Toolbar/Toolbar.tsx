@@ -36,12 +36,18 @@ export default function Toolbar() {
   const clearAll = useAnnotationStore((s) => s.clearAll)
   const remove = useAnnotationStore((s) => s.remove)
 
+  const fontSize = useAnnotationStore((s) => s.fontSize)
+  const setFontSize = useAnnotationStore((s) => s.setFontSize)
+
   const sourceBytes = usePdfStore((s) => s.sourceBytes)
   const fileName = usePdfStore((s) => s.fileName)
   const numPages = usePdfStore((s) => s.numPages)
   const pageNavOpen = usePdfStore((s) => s.pageNavOpen)
   const togglePageNav = usePdfStore((s) => s.togglePageNav)
   const [exporting, setExporting] = useState(false)
+
+  const selectedAnnotation = annotations.find((a) => a.id === selectedId)
+  const textSelected = selectedAnnotation?.type === 'text'
 
   // Mobile color popover
   const [colorPickerOpen, setColorPickerOpen] = useState(false)
@@ -129,6 +135,20 @@ export default function Toolbar() {
         />
       </label>
 
+      <label className="flex items-center gap-2 text-xs text-slate-300">
+        Text
+        <input
+          type="range"
+          min={10}
+          max={48}
+          step={1}
+          value={fontSize}
+          onChange={(e) => setFontSize(parseInt(e.target.value, 10))}
+          className="w-20"
+        />
+        <span className="w-8 tabular-nums">{fontSize}px</span>
+      </label>
+
       <div className="ml-auto flex items-center gap-2">
         {numPages > 1 && (
           <button
@@ -197,12 +217,33 @@ export default function Toolbar() {
     <div className="md:hidden">
       {/* Selection action bar (above the toolbar when something is selected) */}
       {selectedId && (
-        <div className="fixed bottom-[68px] left-0 right-0 z-30 flex items-center justify-center px-3 pb-2 pointer-events-none">
+        <div className="fixed bottom-[68px] left-0 right-0 z-30 flex items-center justify-center gap-2 px-3 pb-2 pointer-events-none">
+          {textSelected && (
+            <div className="pointer-events-auto inline-flex items-center gap-1 bg-white rounded-full shadow-lg px-1 py-1">
+              <button
+                onClick={() => setFontSize(Math.max(10, fontSize - 2))}
+                className="w-8 h-8 rounded-full hover:bg-slate-100 text-lg font-semibold text-slate-700"
+                aria-label="Decrease text size"
+              >
+                −
+              </button>
+              <span className="text-xs font-medium w-10 text-center tabular-nums text-slate-700">
+                {fontSize}px
+              </span>
+              <button
+                onClick={() => setFontSize(Math.min(48, fontSize + 2))}
+                className="w-8 h-8 rounded-full hover:bg-slate-100 text-lg font-semibold text-slate-700"
+                aria-label="Increase text size"
+              >
+                +
+              </button>
+            </div>
+          )}
           <button
             onClick={() => remove(selectedId)}
             className="pointer-events-auto px-4 py-2 rounded-full bg-red-600 text-white text-sm font-medium shadow-lg"
           >
-            Delete selected
+            Delete
           </button>
         </div>
       )}

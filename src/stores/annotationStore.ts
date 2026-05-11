@@ -29,9 +29,45 @@ export const useAnnotationStore = create<AnnotationState>((set) => ({
   annotations: [],
   selectedId: null,
   setTool: (tool) => set({ tool }),
-  setColor: (color) => set({ color }),
-  setStrokeWidth: (strokeWidth) => set({ strokeWidth }),
-  setFontSize: (fontSize) => set({ fontSize }),
+  setColor: (color) =>
+    set((s) => {
+      const sel = s.annotations.find((a) => a.id === s.selectedId)
+      if (sel && sel.type !== 'image') {
+        return {
+          color,
+          annotations: s.annotations.map((a) =>
+            a.id === sel.id ? ({ ...a, color } as Annotation) : a
+          )
+        }
+      }
+      return { color }
+    }),
+  setStrokeWidth: (strokeWidth) =>
+    set((s) => {
+      const sel = s.annotations.find((a) => a.id === s.selectedId)
+      if (sel && sel.type === 'draw') {
+        return {
+          strokeWidth,
+          annotations: s.annotations.map((a) =>
+            a.id === sel.id ? ({ ...a, strokeWidth } as Annotation) : a
+          )
+        }
+      }
+      return { strokeWidth }
+    }),
+  setFontSize: (fontSize) =>
+    set((s) => {
+      const sel = s.annotations.find((a) => a.id === s.selectedId)
+      if (sel && sel.type === 'text') {
+        return {
+          fontSize,
+          annotations: s.annotations.map((a) =>
+            a.id === sel.id ? ({ ...a, fontSize } as Annotation) : a
+          )
+        }
+      }
+      return { fontSize }
+    }),
   setSelected: (selectedId) => set({ selectedId }),
   add: (a) => set((s) => ({ annotations: [...s.annotations, a], selectedId: a.id })),
   update: (id, patch) =>
