@@ -102,7 +102,7 @@ export default function App() {
 
       {doc && <Toolbar />}
 
-      <main className="flex-1 min-h-0">
+      <main className="flex-1 min-h-0 pb-16 md:pb-0">
         {loading ? (
           <div className="h-full flex items-center justify-center text-slate-500">
             Loading PDF…

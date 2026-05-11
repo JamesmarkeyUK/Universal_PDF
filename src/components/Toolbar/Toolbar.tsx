@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAnnotationStore } from '../../stores/annotationStore'
 import { usePdfStore } from '../../stores/pdfStore'
 import { exportPdfWithAnnotations } from '../../lib/export'
@@ -40,7 +40,20 @@ export default function Toolbar() {
   const fileName = usePdfStore((s) => s.fileName)
   const [exporting, setExporting] = useState(false)
 
-  // Keyboard: Delete / Backspace removes the selected annotation when no input is focused.
+  // Mobile color popover
+  const [colorPickerOpen, setColorPickerOpen] = useState(false)
+  const colorPickerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!colorPickerOpen) return
+    function onDoc(e: MouseEvent) {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
+        setColorPickerOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [colorPickerOpen])
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== 'Delete' && e.key !== 'Backspace') return
@@ -68,8 +81,9 @@ export default function Toolbar() {
     }
   }
 
-  return (
-    <div className="flex flex-wrap items-center gap-1 px-3 py-2 bg-slate-800 text-white border-b border-slate-700">
+  // --- DESKTOP TOOLBAR (top) -----------------------------------------------
+  const desktop = (
+    <div className="hidden md:flex flex-wrap items-center gap-1 px-3 py-2 bg-slate-800 text-white border-b border-slate-700">
       {TOOLS.map((t) => (
         <button
           key={t.id}
@@ -146,5 +160,108 @@ export default function Toolbar() {
         </button>
       </div>
     </div>
+  )
+
+  // --- MOBILE TOOLBAR (bottom, fixed) --------------------------------------
+  const mobileBtn = (id: Tool, icon: string, label: string) => {
+    const active = tool === id
+    return (
+      <button
+        key={id}
+        onClick={() => setTool(id)}
+        className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 rounded transition-colors ${
+          active ? 'text-blue-400' : 'text-slate-200'
+        }`}
+      >
+        <span className="text-xl leading-none">{icon}</span>
+        <span className="text-[10px] font-medium">{label}</span>
+      </button>
+    )
+  }
+
+  const mobile = (
+    <div className="md:hidden">
+      {/* Selection action bar (above the toolbar when something is selected) */}
+      {selectedId && (
+        <div className="fixed bottom-[68px] left-0 right-0 z-30 flex items-center justify-center px-3 pb-2 pointer-events-none">
+          <button
+            onClick={() => remove(selectedId)}
+            className="pointer-events-auto px-4 py-2 rounded-full bg-red-600 text-white text-sm font-medium shadow-lg"
+          >
+            Delete selected
+          </button>
+        </div>
+      )}
+
+      {/* Color picker popover */}
+      {colorPickerOpen && (
+        <div
+          ref={colorPickerRef}
+          className="fixed bottom-[72px] left-1/2 -translate-x-1/2 z-40 bg-white rounded-2xl shadow-xl px-3 py-2 flex items-center gap-3"
+        >
+          {COLORS.map((c) => (
+            <button
+              key={c.hex}
+              onClick={() => { setColor(c.hex); setColorPickerOpen(false) }}
+              className={`w-9 h-9 rounded-full border-2 ${
+                color === c.hex ? 'border-slate-900 scale-110' : 'border-slate-200'
+              }`}
+              style={{ backgroundColor: c.hex }}
+              title={c.name}
+            />
+          ))}
+        </div>
+      )}
+
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-30 h-16 bg-slate-900 border-t border-slate-700 flex items-stretch px-1"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        {mobileBtn('select', '↖', 'Select')}
+        {mobileBtn('draw', '✎', 'Draw')}
+        <div className="flex-1 h-full flex items-stretch">
+          <SignatureMenu openUpward compact />
+        </div>
+
+        {/* Color */}
+        <button
+          onClick={() => setColorPickerOpen((o) => !o)}
+          className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-slate-200"
+        >
+          <span
+            className="w-6 h-6 rounded-full border-2 border-white/40"
+            style={{ backgroundColor: color }}
+          />
+          <span className="text-[10px] font-medium">Color</span>
+        </button>
+
+        <button
+          onClick={undo}
+          disabled={annotations.length === 0}
+          className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-slate-200 disabled:opacity-40"
+        >
+          <span className="text-xl leading-none">↶</span>
+          <span className="text-[10px] font-medium">Undo</span>
+        </button>
+
+        <button
+          onClick={onExport}
+          disabled={!sourceBytes || exporting}
+          className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <span className="text-xl leading-none">⤓</span>
+          <span className="text-[10px] font-medium">
+            {exporting ? '…' : 'Save'}
+          </span>
+        </button>
+      </nav>
+    </div>
+  )
+
+  return (
+    <>
+      {desktop}
+      {mobile}
+    </>
   )
 }

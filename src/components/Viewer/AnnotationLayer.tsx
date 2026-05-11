@@ -155,6 +155,9 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
           height: targetW * ratio,
           src: active.dataUrl
         })
+        // After placing a signature, switch to select so the user can
+        // immediately drag, resize, or delete it.
+        useAnnotationStore.getState().setTool('select')
       }
     }
   }

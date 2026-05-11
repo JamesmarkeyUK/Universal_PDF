@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { useSignatureStore } from '../../stores/signatureStore'
 import { useAnnotationStore } from '../../stores/annotationStore'
 
-export default function SignatureMenu() {
+interface SignatureMenuProps {
+  openUpward?: boolean
+  compact?: boolean
+}
+
+export default function SignatureMenu({ openUpward = false, compact = false }: SignatureMenuProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -35,26 +40,40 @@ export default function SignatureMenu() {
 
   return (
     <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className={`h-10 px-3 rounded flex items-center gap-2 text-sm font-medium transition-colors ${
-          armed ? 'bg-blue-600 hover:bg-blue-500' : 'bg-slate-700 hover:bg-slate-600'
-        }`}
-      >
-        <span>✍</span>
-        <span>Sign</span>
-        {active && (
-          <img
-            src={active.dataUrl}
-            alt=""
-            className="h-6 max-w-12 bg-white rounded px-1"
-          />
-        )}
-        <span className="opacity-60 text-xs">▾</span>
-      </button>
+      {compact ? (
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className={`flex flex-col items-center justify-center w-full h-full gap-0.5 rounded transition-colors ${
+            armed ? 'text-blue-400' : 'text-slate-200'
+          }`}
+        >
+          <span className="text-xl leading-none">✍</span>
+          <span className="text-[10px] font-medium">Sign</span>
+        </button>
+      ) : (
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className={`h-10 px-3 rounded flex items-center gap-2 text-sm font-medium transition-colors ${
+            armed ? 'bg-blue-600 hover:bg-blue-500' : 'bg-slate-700 hover:bg-slate-600'
+          }`}
+        >
+          <span>✍</span>
+          <span>Sign</span>
+          {active && (
+            <img
+              src={active.dataUrl}
+              alt=""
+              className="h-6 max-w-12 bg-white rounded px-1"
+            />
+          )}
+          <span className="opacity-60 text-xs">▾</span>
+        </button>
+      )}
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-72 bg-white text-slate-900 rounded-lg shadow-xl border border-slate-200 z-40 overflow-hidden">
+        <div className={`absolute right-0 w-72 bg-white text-slate-900 rounded-lg shadow-xl border border-slate-200 z-40 overflow-hidden ${
+          openUpward ? 'bottom-full mb-2' : 'top-full mt-1'
+        }`}>
           <div className="px-3 py-2 text-xs font-medium text-slate-500 uppercase tracking-wide border-b border-slate-100">
             Saved signatures
           </div>
