@@ -3,6 +3,7 @@ import Toolbar from './components/Toolbar/Toolbar'
 import PdfViewer from './components/Viewer/PdfViewer'
 import PageNavigator from './components/Viewer/PageNavigator'
 import SignaturePad from './components/Signature/SignaturePad'
+import RecentFilesList from './components/RecentFiles/RecentFilesList'
 import { usePdfStore } from './stores/pdfStore'
 
 function isPdfFile(file: File) {
@@ -15,6 +16,11 @@ export default function App() {
   const fileName = usePdfStore((s) => s.fileName)
   const doc = usePdfStore((s) => s.doc)
   const loading = usePdfStore((s) => s.loading)
+  const refreshRecents = usePdfStore((s) => s.refreshRecents)
+
+  useEffect(() => {
+    refreshRecents()
+  }, [refreshRecents])
 
   const [dragOver, setDragOver] = useState(false)
   const dragCounter = useRef(0)
@@ -111,7 +117,7 @@ export default function App() {
         ) : doc ? (
           <PdfViewer />
         ) : (
-          <div className="h-full flex items-center justify-center">
+          <div className="h-full flex flex-col items-center justify-center px-4 py-6 overflow-auto">
             <button
               onClick={() => inputRef.current?.click()}
               className="px-8 py-6 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 hover:border-blue-500 hover:text-blue-600 transition-colors"
@@ -120,6 +126,7 @@ export default function App() {
               <div className="font-medium">Click to open a PDF</div>
               <div className="text-xs mt-1 opacity-70">or drop one anywhere</div>
             </button>
+            <RecentFilesList />
           </div>
         )}
       </main>

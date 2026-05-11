@@ -1,0 +1,60 @@
+import { usePdfStore } from '../../stores/pdfStore'
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+function formatRelative(ms: number): string {
+  const diff = Date.now() - ms
+  if (diff < 60_000) return 'just now'
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
+  return `${Math.floor(diff / 86_400_000)}d ago`
+}
+
+export default function RecentFilesList() {
+  const recents = usePdfStore((s) => s.recents)
+  const openRecent = usePdfStore((s) => s.openRecent)
+  const removeRecent = usePdfStore((s) => s.removeRecent)
+
+  if (recents.length === 0) return null
+
+  return (
+    <div className="mt-8 w-full max-w-md">
+      <div className="text-xs uppercase text-slate-500 font-medium mb-2 px-1 tracking-wide">
+        Recent
+      </div>
+      <div className="space-y-1">
+        {recents.map((r) => (
+          <div
+            key={r.id}
+            className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg overflow-hidden"
+          >
+            <button
+              onClick={() => openRecent(r.id)}
+              className="flex-1 flex items-center gap-3 p-3 hover:bg-slate-50 text-left min-w-0"
+            >
+              <span className="text-2xl shrink-0">📄</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-slate-900 truncate">{r.name}</div>
+                <div className="text-xs text-slate-500">
+                  {formatSize(r.size)} · {formatRelative(r.lastOpened)}
+                </div>
+              </div>
+            </button>
+            <button
+              onClick={() => removeRecent(r.id)}
+              className="text-slate-300 hover:text-red-600 px-3 py-3"
+              title="Remove from recents"
+              aria-label={`Remove ${r.name} from recents`}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
