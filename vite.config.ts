@@ -3,7 +3,12 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-export default defineConfig({
+// Deployed to GitHub Pages at https://<owner>.github.io/universal-pdf/.
+// Production assets need that base path; dev/preview serve from root.
+const PROD_BASE = '/universal-pdf/'
+
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? PROD_BASE : '/',
   plugins: [
     react(),
     tailwindcss(),
@@ -17,7 +22,8 @@ export default defineConfig({
         theme_color: '#0f172a',
         background_color: '#f8fafc',
         display: 'standalone',
-        start_url: '/',
+        start_url: '.',
+        scope: '.',
         icons: [
           { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }
         ]
@@ -31,4 +37,4 @@ export default defineConfig({
   worker: {
     format: 'es'
   }
-})
+}))
