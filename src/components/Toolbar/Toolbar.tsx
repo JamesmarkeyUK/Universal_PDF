@@ -244,6 +244,7 @@ export default function Toolbar() {
         ) : null}
         {mobileBtn('select', '↖', 'Select')}
         {mobileBtn('draw', '✎', 'Draw')}
+        {mobileBtn('text', 'T', 'Text')}
         <div className="flex-1 h-full flex items-stretch">
           <SignatureMenu openUpward compact />
         </div>
