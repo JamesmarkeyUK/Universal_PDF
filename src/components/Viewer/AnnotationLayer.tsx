@@ -267,6 +267,11 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
 
   const selectable = tool === 'select'
   const cursor = tool === 'select' ? 'default' : 'crosshair'
+  // In select mode let the browser handle vertical scroll + pinch-zoom so the
+  // PDF stays usable on touch screens. Konva still captures shape drags from
+  // direct hits on annotations. In creation modes we need exclusive control of
+  // touch input so drawing doesn't scroll the page.
+  const touchAction = tool === 'select' ? 'pan-y pinch-zoom' : 'none'
 
   return (
     <>
@@ -277,7 +282,7 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
           position: 'absolute',
           inset: 0,
           cursor,
-          touchAction: 'none'
+          touchAction
         }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}

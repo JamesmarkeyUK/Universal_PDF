@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Toolbar from './components/Toolbar/Toolbar'
 import PdfViewer from './components/Viewer/PdfViewer'
+import PageNavigator from './components/Viewer/PageNavigator'
 import SignaturePad from './components/Signature/SignaturePad'
 import { usePdfStore } from './stores/pdfStore'
 
@@ -136,6 +137,7 @@ export default function App() {
         </div>
       )}
 
+      <PageNavigator />
       <SignaturePad />
     </div>
   )

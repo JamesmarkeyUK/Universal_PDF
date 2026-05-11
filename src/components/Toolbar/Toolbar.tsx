@@ -38,6 +38,9 @@ export default function Toolbar() {
 
   const sourceBytes = usePdfStore((s) => s.sourceBytes)
   const fileName = usePdfStore((s) => s.fileName)
+  const numPages = usePdfStore((s) => s.numPages)
+  const pageNavOpen = usePdfStore((s) => s.pageNavOpen)
+  const togglePageNav = usePdfStore((s) => s.togglePageNav)
   const [exporting, setExporting] = useState(false)
 
   // Mobile color popover
@@ -127,6 +130,17 @@ export default function Toolbar() {
       </label>
 
       <div className="ml-auto flex items-center gap-2">
+        {numPages > 1 && (
+          <button
+            onClick={togglePageNav}
+            title="Show pages"
+            className={`px-3 h-10 rounded text-sm font-medium ${
+              pageNavOpen ? 'bg-blue-600' : 'bg-slate-700 hover:bg-slate-600'
+            }`}
+          >
+            ☰ Pages
+          </button>
+        )}
         {selectedId && (
           <button
             onClick={() => remove(selectedId)}
@@ -214,9 +228,20 @@ export default function Toolbar() {
       )}
 
       <nav
-        className="fixed bottom-0 left-0 right-0 z-30 h-16 bg-slate-900 border-t border-slate-700 flex items-stretch px-1"
+        className="fixed bottom-0 left-0 right-0 z-40 h-16 bg-slate-900 border-t border-slate-700 flex items-stretch px-1"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
+        {numPages > 1 ? (
+          <button
+            onClick={togglePageNav}
+            className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 ${
+              pageNavOpen ? 'text-blue-400' : 'text-slate-200'
+            }`}
+          >
+            <span className="text-xl leading-none">☰</span>
+            <span className="text-[10px] font-medium">Pages</span>
+          </button>
+        ) : null}
         {mobileBtn('select', '↖', 'Select')}
         {mobileBtn('draw', '✎', 'Draw')}
         <div className="flex-1 h-full flex items-stretch">

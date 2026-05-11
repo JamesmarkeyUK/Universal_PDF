@@ -7,8 +7,11 @@ interface PdfState {
   fileName: string | null
   sourceBytes: ArrayBuffer | null
   loading: boolean
+  pageNavOpen: boolean
   loadFile: (file: File) => Promise<void>
   reset: () => void
+  togglePageNav: () => void
+  setPageNavOpen: (open: boolean) => void
 }
 
 export const usePdfStore = create<PdfState>((set, get) => ({
@@ -17,6 +20,9 @@ export const usePdfStore = create<PdfState>((set, get) => ({
   fileName: null,
   sourceBytes: null,
   loading: false,
+  pageNavOpen: false,
+  togglePageNav: () => set((s) => ({ pageNavOpen: !s.pageNavOpen })),
+  setPageNavOpen: (pageNavOpen) => set({ pageNavOpen }),
   loadFile: async (file) => {
     set({ loading: true })
     try {

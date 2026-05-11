@@ -46,7 +46,8 @@ export default function PdfPage({ doc, pageIndex, scale }: Props) {
 
   return (
     <div
-      className="relative shadow-lg mx-auto bg-white"
+      data-page-index={pageIndex}
+      className="relative shadow-lg mx-auto bg-white scroll-mt-4"
       style={size ? { width: size.width, height: size.height } : undefined}
     >
       <canvas ref={canvasRef} className="block" />
