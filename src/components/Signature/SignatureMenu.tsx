@@ -44,7 +44,7 @@ export default function SignatureMenu({ openUpward = false, compact = false }: S
         <button
           onClick={() => setOpen((o) => !o)}
           className={`flex flex-col items-center justify-center w-full h-full gap-0.5 rounded transition-colors ${
-            armed ? 'text-blue-400' : 'text-slate-200'
+            armed ? 'text-orange-400' : 'text-slate-200'
           }`}
         >
           <span className="text-xl leading-none">✍</span>
@@ -54,7 +54,7 @@ export default function SignatureMenu({ openUpward = false, compact = false }: S
         <button
           onClick={() => setOpen((o) => !o)}
           className={`h-10 px-3 rounded flex items-center gap-2 text-sm font-medium transition-colors ${
-            armed ? 'bg-blue-600 hover:bg-blue-500' : 'bg-slate-700 hover:bg-slate-600'
+            armed ? 'bg-orange-600 hover:bg-orange-500' : 'bg-slate-700 hover:bg-slate-600'
           }`}
         >
           <span>✍</span>
@@ -87,7 +87,7 @@ export default function SignatureMenu({ openUpward = false, compact = false }: S
                 <div
                   key={s.id}
                   className={`flex items-center gap-2 px-3 py-2 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0 ${
-                    s.id === activeId ? 'bg-blue-50' : ''
+                    s.id === activeId ? 'bg-orange-50' : ''
                   }`}
                   onClick={() => pick(s.id)}
                 >
@@ -112,7 +112,7 @@ export default function SignatureMenu({ openUpward = false, compact = false }: S
           </div>
           <button
             onClick={() => { openPad(); setOpen(false) }}
-            className="w-full px-3 py-2.5 text-sm font-medium text-blue-600 hover:bg-blue-50 border-t border-slate-100"
+            className="w-full px-3 py-2.5 text-sm font-medium text-orange-600 hover:bg-orange-50 border-t border-slate-100"
           >
             + Draw new signature
           </button>

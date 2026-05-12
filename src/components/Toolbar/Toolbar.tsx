@@ -114,7 +114,7 @@ export default function Toolbar() {
         onClick={() => togglePanel(panel)}
         className={`w-[14px] h-[14px] text-[9px] font-bold rounded-[3px] flex items-center justify-center transition-colors border self-start mt-[3px] -ml-[2px] leading-none ${
           openPanel === panel
-            ? 'bg-blue-500 border-blue-400 text-white'
+            ? 'bg-orange-500 border-orange-400 text-white'
             : 'bg-slate-600 border-slate-500 text-slate-300 hover:bg-slate-500 hover:text-white'
         }`}
         title={`${openPanel === panel ? 'Close' : 'Open'} options`}
@@ -132,7 +132,7 @@ export default function Toolbar() {
         onClick={onClick ?? (() => setTool(id))}
         title={label}
         className={`w-10 h-10 rounded flex items-center justify-center text-lg font-semibold transition-colors ${
-          tool === id ? 'bg-blue-600' : 'hover:bg-slate-700'
+          tool === id ? 'bg-orange-600' : 'hover:bg-slate-700'
         }`}
       >
         {icon}
@@ -228,7 +228,7 @@ export default function Toolbar() {
                 onClick={() => setTool(s.id)}
                 title={s.label}
                 className={`w-9 h-9 rounded flex items-center justify-center text-lg font-semibold transition-colors ${
-                  tool === s.id ? 'bg-blue-600' : 'hover:bg-slate-700'
+                  tool === s.id ? 'bg-orange-600' : 'hover:bg-slate-700'
                 }`}
               >
                 {s.icon}
@@ -274,7 +274,7 @@ export default function Toolbar() {
             onClick={togglePageNav}
             title="Show pages"
             className={`px-3 h-10 rounded text-sm font-medium ${
-              pageNavOpen ? 'bg-blue-600' : 'bg-slate-700 hover:bg-slate-600'
+              pageNavOpen ? 'bg-orange-600' : 'bg-slate-700 hover:bg-slate-600'
             }`}
           >
             ☰ Pages
@@ -354,7 +354,7 @@ export default function Toolbar() {
               onClick={() => { setTool(s.id) }}
               title={s.label}
               className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl font-semibold transition-colors ${
-                tool === s.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                tool === s.id ? 'bg-orange-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
               {s.icon}
@@ -421,7 +421,7 @@ export default function Toolbar() {
         <button
           onClick={() => setTool(id)}
           className={`flex flex-col items-center justify-center w-full h-full gap-0.5 rounded transition-colors ${
-            active ? 'text-blue-400' : 'text-slate-200'
+            active ? 'text-orange-400' : 'text-slate-200'
           }`}
         >
           <span className="text-xl leading-none">{icon}</span>
@@ -431,7 +431,7 @@ export default function Toolbar() {
           onClick={() => togglePanel(panel)}
           className={`absolute top-1 right-1 w-[13px] h-[13px] text-[8px] font-bold rounded-[2px] flex items-center justify-center leading-none border ${
             openPanel === panel
-              ? 'bg-blue-500 border-blue-400 text-white'
+              ? 'bg-orange-500 border-orange-400 text-white'
               : 'bg-slate-700 border-slate-600 text-slate-400'
           }`}
         >
@@ -490,7 +490,7 @@ export default function Toolbar() {
           <button
             onClick={togglePageNav}
             className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 ${
-              pageNavOpen ? 'text-blue-400' : 'text-slate-200'
+              pageNavOpen ? 'text-orange-400' : 'text-slate-200'
             }`}
           >
             <span className="text-xl leading-none">☰</span>
@@ -502,7 +502,7 @@ export default function Toolbar() {
         <button
           onClick={() => setTool('select')}
           className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 rounded transition-colors ${
-            tool === 'select' ? 'text-blue-400' : 'text-slate-200'
+            tool === 'select' ? 'text-orange-400' : 'text-slate-200'
           }`}
         >
           <span className="text-xl leading-none">↖</span>
@@ -535,7 +535,7 @@ export default function Toolbar() {
             onClick={() => togglePanel('color')}
             className={`absolute top-1 right-1 w-[13px] h-[13px] text-[8px] font-bold rounded-[2px] flex items-center justify-center leading-none border ${
               openPanel === 'color'
-                ? 'bg-blue-500 border-blue-400 text-white'
+                ? 'bg-orange-500 border-orange-400 text-white'
                 : 'bg-slate-700 border-slate-600 text-slate-400'
             }`}
           >
