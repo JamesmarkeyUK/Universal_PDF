@@ -42,12 +42,11 @@ function smoothPolyline(points: number[], tension = 0.4, samplesPerSeg = 12) {
   return out.flat()
 }
 
-export async function exportPdfWithAnnotations(
+export async function buildAnnotatedPdfBytes(
   sourceBytes: ArrayBuffer,
   annotations: Annotation[],
-  scale: number,
-  fileName: string
-) {
+  scale: number
+): Promise<Uint8Array> {
   const pdf = await PDFDocument.load(sourceBytes)
   const font = await pdf.embedFont(StandardFonts.Helvetica)
   const pages = pdf.getPages()
@@ -154,8 +153,11 @@ export async function exportPdfWithAnnotations(
     }
   }
 
-  const out = await pdf.save()
-  const blob = new Blob([out as BlobPart], { type: 'application/pdf' })
+  return pdf.save()
+}
+
+export function downloadPdfBytes(bytes: Uint8Array, fileName: string) {
+  const blob = new Blob([bytes as BlobPart], { type: 'application/pdf' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
@@ -164,4 +166,14 @@ export async function exportPdfWithAnnotations(
   link.click()
   link.remove()
   URL.revokeObjectURL(url)
+}
+
+export async function exportPdfWithAnnotations(
+  sourceBytes: ArrayBuffer,
+  annotations: Annotation[],
+  scale: number,
+  fileName: string
+) {
+  const bytes = await buildAnnotatedPdfBytes(sourceBytes, annotations, scale)
+  downloadPdfBytes(bytes, fileName)
 }

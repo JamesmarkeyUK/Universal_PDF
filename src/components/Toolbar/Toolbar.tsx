@@ -43,7 +43,13 @@ export default function Toolbar() {
   const numPages = usePdfStore((s) => s.numPages)
   const pageNavOpen = usePdfStore((s) => s.pageNavOpen)
   const togglePageNav = usePdfStore((s) => s.togglePageNav)
+  const setPreviewOpen = usePdfStore((s) => s.setPreviewOpen)
   const [exporting, setExporting] = useState(false)
+
+  function onPreview() {
+    if (!sourceBytes) return
+    setPreviewOpen(true)
+  }
 
   const selectedAnnotation = annotations.find((a) => a.id === selectedId)
   const textSelected = selectedAnnotation?.type === 'text'
@@ -299,6 +305,14 @@ export default function Toolbar() {
           Clear
         </button>
         <button
+          onClick={onPreview}
+          disabled={!sourceBytes}
+          className="px-3 h-10 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm"
+          title="Preview the exported PDF"
+        >
+          Preview
+        </button>
+        <button
           onClick={onExport}
           disabled={!sourceBytes || exporting}
           className="px-4 h-10 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
@@ -536,6 +550,15 @@ export default function Toolbar() {
         >
           <span className="text-xl leading-none">↶</span>
           <span className="text-[10px] font-medium">Undo</span>
+        </button>
+
+        <button
+          onClick={onPreview}
+          disabled={!sourceBytes}
+          className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-slate-200 disabled:opacity-40"
+        >
+          <span className="text-xl leading-none">◎</span>
+          <span className="text-[10px] font-medium">Preview</span>
         </button>
 
         <button

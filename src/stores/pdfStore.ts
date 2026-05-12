@@ -9,11 +9,13 @@ interface PdfState {
   sourceBytes: ArrayBuffer | null
   loading: boolean
   pageNavOpen: boolean
+  previewOpen: boolean
   recents: RecentMeta[]
   loadFile: (file: File) => Promise<void>
   reset: () => void
   togglePageNav: () => void
   setPageNavOpen: (open: boolean) => void
+  setPreviewOpen: (open: boolean) => void
   refreshRecents: () => Promise<void>
   openRecent: (id: string) => Promise<void>
   removeRecent: (id: string) => Promise<void>
@@ -26,9 +28,11 @@ export const usePdfStore = create<PdfState>((set, get) => ({
   sourceBytes: null,
   loading: false,
   pageNavOpen: false,
+  previewOpen: false,
   recents: [],
   togglePageNav: () => set((s) => ({ pageNavOpen: !s.pageNavOpen })),
   setPageNavOpen: (pageNavOpen) => set({ pageNavOpen }),
+  setPreviewOpen: (previewOpen) => set({ previewOpen }),
   loadFile: async (file) => {
     set({ loading: true })
     try {
@@ -54,7 +58,7 @@ export const usePdfStore = create<PdfState>((set, get) => ({
   },
   reset: () => {
     get().doc?.destroy()
-    set({ doc: null, numPages: 0, fileName: null, sourceBytes: null })
+    set({ doc: null, numPages: 0, fileName: null, sourceBytes: null, previewOpen: false })
   },
   refreshRecents: async () => {
     const recents = await listRecents()
