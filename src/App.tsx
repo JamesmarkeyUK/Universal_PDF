@@ -87,12 +87,19 @@ export default function App() {
   return (
     <div className="flex flex-col h-full bg-slate-100">
       <header className="bg-slate-900 text-white">
-        <div className="mx-auto w-full max-w-7xl flex items-center gap-3 px-4 py-2">
-          <div className="font-semibold tracking-tight">Universal PDF</div>
+        <div className="relative mx-auto w-full max-w-7xl flex items-center gap-3 px-4 py-2 overflow-hidden">
+          <img
+            src="/UNISIM_Icon.png"
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            className="pointer-events-none select-none absolute right-36 top-1/2 -translate-y-1/2 h-28 w-28 -rotate-12 opacity-30 mix-blend-screen drop-shadow-[0_1px_0_rgba(255,255,255,0.15)]"
+          />
+          <div className="relative font-semibold tracking-tight">Universal PDF</div>
           {fileName && (
-            <span className="text-sm text-slate-300 truncate max-w-xs">{fileName}</span>
+            <span className="relative text-sm text-slate-300 truncate max-w-xs">{fileName}</span>
           )}
-          <div className="ml-auto flex items-center gap-2">
+          <div className="relative ml-auto flex items-center gap-2">
             <button
               onClick={() => inputRef.current?.click()}
               className="bg-blue-600 hover:bg-blue-500 px-3 py-1.5 rounded text-sm font-medium"
