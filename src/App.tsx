@@ -4,6 +4,7 @@ import PdfViewer from './components/Viewer/PdfViewer'
 import PageNavigator from './components/Viewer/PageNavigator'
 import SignaturePad from './components/Signature/SignaturePad'
 import RecentFilesList from './components/RecentFiles/RecentFilesList'
+import LivePreview from './components/Preview/LivePreview'
 import { usePdfStore } from './stores/pdfStore'
 
 function isPdfFile(file: File) {
@@ -146,6 +147,7 @@ export default function App() {
 
       <PageNavigator />
       <SignaturePad />
+      <LivePreview />
     </div>
   )
 }
