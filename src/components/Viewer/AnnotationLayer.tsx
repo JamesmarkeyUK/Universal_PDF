@@ -524,7 +524,7 @@ function TextEditor({
         fontFamily: 'sans-serif',
         lineHeight: 1,
         background: 'transparent',
-        border: '1px dashed #2563eb',
+        border: '1px dashed #ea580c',
         outline: 'none',
         padding: '0 2px',
         minWidth: '120px',

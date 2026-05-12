@@ -102,7 +102,7 @@ export default function App() {
           <div className="relative ml-auto flex items-center gap-2">
             <button
               onClick={() => inputRef.current?.click()}
-              className="bg-blue-600 hover:bg-blue-500 px-3 py-1.5 rounded text-sm font-medium"
+              className="bg-orange-600 hover:bg-orange-500 px-3 py-1.5 rounded text-sm font-medium"
             >
               {doc ? 'Open another' : 'Open PDF'}
             </button>
@@ -130,7 +130,7 @@ export default function App() {
           <div className="h-full flex flex-col items-center justify-center px-4 py-6 overflow-auto">
             <button
               onClick={() => inputRef.current?.click()}
-              className="px-8 py-6 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 hover:border-blue-500 hover:text-blue-600 transition-colors"
+              className="px-8 py-6 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 hover:border-orange-500 hover:text-orange-600 transition-colors"
             >
               <div className="text-3xl mb-2">📄</div>
               <div className="font-medium">Click to open a PDF</div>
@@ -142,8 +142,8 @@ export default function App() {
       </main>
 
       {dragOver && (
-        <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center bg-blue-600/20">
-          <div className="absolute inset-4 border-4 border-dashed border-blue-500 rounded-2xl" />
+        <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center bg-orange-600/20">
+          <div className="absolute inset-4 border-4 border-dashed border-orange-500 rounded-2xl" />
           <div className="bg-white shadow-xl rounded-xl px-6 py-5 flex items-center gap-3">
             <div className="text-3xl">📄</div>
             <div>

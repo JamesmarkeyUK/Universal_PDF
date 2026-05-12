@@ -138,7 +138,7 @@ export default function SignaturePad() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Name (optional)"
-            className="flex-1 min-w-40 px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 min-w-40 px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
           <button
             onClick={clear}
@@ -155,7 +155,7 @@ export default function SignaturePad() {
           <button
             onClick={save}
             disabled={lines.length === 0}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded text-sm font-medium"
+            className="px-4 py-2 bg-orange-600 hover:bg-orange-500 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded text-sm font-medium"
           >
             Save
           </button>
