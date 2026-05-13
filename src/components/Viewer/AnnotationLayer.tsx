@@ -105,7 +105,7 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
 
   function onPointerDown(e: Konva.KonvaEventObject<PointerEvent>) {
     if (editingId) return // ignore stage events while typing
-    if (tool === 'select') {
+    if (tool === 'select' || tool === 'form') {
       if (e.target === e.target.getStage()) setSelected(null)
       return
     }
@@ -145,8 +145,9 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
       if (active) {
         const targetW = 160
         const ratio = active.height / active.width
+        const annotId = crypto.randomUUID()
         add({
-          id: crypto.randomUUID(),
+          id: annotId,
           pageIndex,
           type: 'image',
           x: pos.x - targetW / 2,
@@ -155,9 +156,41 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
           height: targetW * ratio,
           src: active.dataUrl
         })
-        // After placing a signature, switch to select so the user can
-        // immediately drag, resize, or delete it.
+        // If signature has a verified email, place a small text label below it
+        if (active.verifiedEmail) {
+          add({
+            id: crypto.randomUUID(),
+            pageIndex,
+            type: 'text',
+            x: pos.x - targetW / 2,
+            y: pos.y + (targetW * ratio) / 2 + 4,
+            text: `✓ Verified as: ${active.verifiedEmail}`,
+            color: '#16a34a',
+            fontSize: 10
+          })
+        }
         useAnnotationStore.getState().setTool('select')
+      }
+    } else if (tool === 'image') {
+      const src = useAnnotationStore.getState().uploadedImageSrc
+      if (src) {
+        const img = new Image()
+        img.onload = () => {
+          const targetW = 200
+          const ratio = img.naturalHeight / img.naturalWidth
+          add({
+            id: crypto.randomUUID(),
+            pageIndex,
+            type: 'image',
+            x: pos.x - targetW / 2,
+            y: pos.y - (targetW * ratio) / 2,
+            width: targetW,
+            height: targetW * ratio,
+            src
+          })
+          useAnnotationStore.getState().setTool('select')
+        }
+        img.src = src
       }
     }
   }
@@ -266,12 +299,8 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
   }
 
   const selectable = tool === 'select'
-  const cursor = tool === 'select' ? 'default' : 'crosshair'
-  // In select mode let the browser handle vertical scroll + pinch-zoom so the
-  // PDF stays usable on touch screens. Konva still captures shape drags from
-  // direct hits on annotations. In creation modes we need exclusive control of
-  // touch input so drawing doesn't scroll the page.
-  const touchAction = tool === 'select' ? 'pan-y pinch-zoom' : 'none'
+  const cursor = (tool === 'select' || tool === 'form') ? 'default' : 'crosshair'
+  const touchAction = (tool === 'select' || tool === 'form') ? 'pan-y pinch-zoom' : 'none'
 
   return (
     <>

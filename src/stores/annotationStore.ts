@@ -8,11 +8,13 @@ interface AnnotationState {
   fontSize: number
   annotations: Annotation[]
   selectedId: string | null
+  uploadedImageSrc: string | null
   setTool: (t: Tool) => void
   setColor: (c: string) => void
   setStrokeWidth: (w: number) => void
   setFontSize: (s: number) => void
   setSelected: (id: string | null) => void
+  setUploadedImageSrc: (src: string | null) => void
   add: (a: Annotation) => void
   update: (id: string, patch: Partial<Annotation>) => void
   remove: (id: string) => void
@@ -28,7 +30,9 @@ export const useAnnotationStore = create<AnnotationState>((set) => ({
   fontSize: 18,
   annotations: [],
   selectedId: null,
+  uploadedImageSrc: null,
   setTool: (tool) => set({ tool }),
+  setUploadedImageSrc: (uploadedImageSrc) => set({ uploadedImageSrc }),
   setColor: (color) =>
     set((s) => {
       const sel = s.annotations.find((a) => a.id === s.selectedId)

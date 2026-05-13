@@ -1,11 +1,10 @@
 import { PDFDocument, StandardFonts, LineCapStyle } from 'pdf-lib'
 import type { Annotation } from '../types/annotations'
+import type { FormFieldValue } from '../stores/formStore'
 import { hexToPdfRgb } from './colors'
 
 // Convert a polyline (flat [x0,y0,x1,y1,...]) to a sequence of cardinal-spline
 // Bezier segments matching Konva's `tension` smoothing on the screen overlay.
-// Each segment is sampled into short line segments so pdf-lib's drawLine can
-// approximate the smooth curve.
 function smoothPolyline(points: number[], tension = 0.4, samplesPerSeg = 12) {
   if (points.length < 4) return points
   const out: Array<[number, number]> = []
@@ -45,11 +44,32 @@ function smoothPolyline(points: number[], tension = 0.4, samplesPerSeg = 12) {
 export async function buildAnnotatedPdfBytes(
   sourceBytes: ArrayBuffer,
   annotations: Annotation[],
-  scale: number
+  scale: number,
+  formValues?: FormFieldValue[]
 ): Promise<Uint8Array> {
   const pdf = await PDFDocument.load(sourceBytes)
   const font = await pdf.embedFont(StandardFonts.Helvetica)
   const pages = pdf.getPages()
+
+  // Fill PDF form fields if any
+  if (formValues && formValues.length > 0) {
+    try {
+      const form = pdf.getForm()
+      for (const fv of formValues) {
+        if (!fv.value) continue
+        try {
+          const field = form.getTextField(fv.fieldName)
+          field.setText(fv.value)
+        } catch {
+          // Field not found or not a text field — skip silently
+        }
+      }
+      // Flatten form so values are baked in
+      try { form.flatten() } catch { /* ignore if form can't be flattened */ }
+    } catch {
+      // No form fields or form not supported
+    }
+  }
 
   const byPage = new Map<number, Annotation[]>()
   for (const a of annotations) {
@@ -161,7 +181,7 @@ export function downloadPdfBytes(bytes: Uint8Array, fileName: string) {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = fileName.replace(/\.pdf$/i, '') + '-annotated.pdf'
+  link.download = fileName
   document.body.appendChild(link)
   link.click()
   link.remove()
@@ -172,8 +192,24 @@ export async function exportPdfWithAnnotations(
   sourceBytes: ArrayBuffer,
   annotations: Annotation[],
   scale: number,
-  fileName: string
+  fileName: string,
+  formValues?: FormFieldValue[]
 ) {
-  const bytes = await buildAnnotatedPdfBytes(sourceBytes, annotations, scale)
-  downloadPdfBytes(bytes, fileName)
+  const bytes = await buildAnnotatedPdfBytes(sourceBytes, annotations, scale, formValues)
+  const outName = fileName.replace(/\.pdf$/i, '') + '-annotated.pdf'
+  downloadPdfBytes(bytes, outName)
+}
+
+export async function compressPdf(
+  sourceBytes: ArrayBuffer,
+  fileName: string
+): Promise<{ originalSize: number; compressedSize: number }> {
+  const originalSize = sourceBytes.byteLength
+  const pdf = await PDFDocument.load(sourceBytes)
+  // Save with object streams for better compression
+  const bytes = await pdf.save({ useObjectStreams: true })
+  const compressedSize = bytes.byteLength
+  const outName = fileName.replace(/\.pdf$/i, '') + '-compressed.pdf'
+  downloadPdfBytes(bytes, outName)
+  return { originalSize, compressedSize }
 }
