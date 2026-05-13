@@ -96,6 +96,17 @@ export default function App() {
             className="pointer-events-none select-none absolute right-36 top-1/2 -translate-y-1/2 h-28 w-28 -rotate-12 opacity-30 mix-blend-screen drop-shadow-[0_1px_0_rgba(255,255,255,0.15)]"
           />
           <div className="relative font-semibold tracking-tight">Universal PDF</div>
+          <span className="relative hidden md:inline text-xs text-slate-400">
+            Open source — self-host free or PRO hosted by{' '}
+            <a
+              href="https://www.unisim.co.uk"
+              target="_blank"
+              rel="noreferrer"
+              className="underline-offset-2 hover:text-white hover:underline"
+            >
+              UNI SIM
+            </a>
+          </span>
           {fileName && (
             <span className="relative text-sm text-slate-300 truncate max-w-xs">{fileName}</span>
           )}
