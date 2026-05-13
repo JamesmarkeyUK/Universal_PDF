@@ -2,6 +2,8 @@
 
 > Free and open source PDF viewer + editor. Simple and easy to use.
 
+> Open source — self-host free or PRO hosted by UNI SIM.
+
 A clean Progressive Web App for viewing, annotating, and signing PDFs — works on Windows, macOS, iOS, and Android in any modern browser, with no upload to a server. Files stay on your device.
 
 **[Try the live app →](https://jamesmarkeyuk.github.io/universal-pdf/)**
