@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAnnotationStore } from '../../stores/annotationStore'
 import { usePdfStore } from '../../stores/pdfStore'
-import { exportPdfWithAnnotations } from '../../lib/export'
+import { useFormStore } from '../../stores/formStore'
+import { exportPdfWithAnnotations, compressPdf } from '../../lib/export'
 import SignatureMenu from '../Signature/SignatureMenu'
 import type { Tool } from '../../types/annotations'
 
@@ -23,7 +24,11 @@ const DRAW_SHAPES: { id: Tool; icon: string; label: string }[] = [
 
 type Panel = 'text' | 'draw' | 'color' | null
 
-export default function Toolbar() {
+interface Props {
+  onAIOpen: () => void
+}
+
+export default function Toolbar({ onAIOpen }: Props) {
   const tool = useAnnotationStore((s) => s.tool)
   const color = useAnnotationStore((s) => s.color)
   const strokeWidth = useAnnotationStore((s) => s.strokeWidth)
@@ -37,6 +42,7 @@ export default function Toolbar() {
   const remove = useAnnotationStore((s) => s.remove)
   const fontSize = useAnnotationStore((s) => s.fontSize)
   const setFontSize = useAnnotationStore((s) => s.setFontSize)
+  const setUploadedImageSrc = useAnnotationStore((s) => s.setUploadedImageSrc)
 
   const sourceBytes = usePdfStore((s) => s.sourceBytes)
   const fileName = usePdfStore((s) => s.fileName)
@@ -44,7 +50,14 @@ export default function Toolbar() {
   const pageNavOpen = usePdfStore((s) => s.pageNavOpen)
   const togglePageNav = usePdfStore((s) => s.togglePageNav)
   const setPreviewOpen = usePdfStore((s) => s.setPreviewOpen)
+
+  const formValues = useFormStore((s) => s.values)
+
   const [exporting, setExporting] = useState(false)
+  const [compressing, setCompressing] = useState(false)
+  const [compressResult, setCompressResult] = useState<{ orig: number; compressed: number } | null>(null)
+
+  const imageInputRef = useRef<HTMLInputElement>(null)
 
   function onPreview() {
     if (!sourceBytes) return
@@ -56,11 +69,9 @@ export default function Toolbar() {
 
   const [openPanel, setOpenPanel] = useState<Panel>(null)
 
-  // Desktop group refs (wrap button + panel together for click-outside)
   const textGroupRef = useRef<HTMLDivElement>(null)
   const drawGroupRef = useRef<HTMLDivElement>(null)
   const colorGroupRef = useRef<HTMLDivElement>(null)
-  // Mobile panel ref (the floating popover above the toolbar)
   const mobilePanelRef = useRef<HTMLDivElement>(null)
 
   function togglePanel(p: Panel) {
@@ -96,7 +107,7 @@ export default function Toolbar() {
     setExporting(true)
     try {
       const copy = sourceBytes.slice(0)
-      await exportPdfWithAnnotations(copy, annotations, 1.4, fileName)
+      await exportPdfWithAnnotations(copy, annotations, 1.4, fileName, formValues)
     } catch (e) {
       console.error(e)
       alert('Export failed: ' + (e as Error).message)
@@ -105,9 +116,37 @@ export default function Toolbar() {
     }
   }
 
+  async function onCompress() {
+    if (!sourceBytes || !fileName) return
+    setCompressing(true)
+    setCompressResult(null)
+    try {
+      const copy = sourceBytes.slice(0)
+      const result = await compressPdf(copy, fileName)
+      setCompressResult({ orig: result.originalSize, compressed: result.compressedSize })
+    } catch (e) {
+      console.error(e)
+      alert('Compression failed: ' + (e as Error).message)
+    } finally {
+      setCompressing(false)
+    }
+  }
+
+  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const src = ev.target?.result as string
+      setUploadedImageSrc(src)
+      setTool('image')
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
   const isDrawShape = (t: Tool) => t === 'tick' || t === 'cross' || t === 'rect'
 
-  // Small "+" toggle button used on desktop
   function PlusBox({ panel }: { panel: Panel }) {
     return (
       <button
@@ -124,7 +163,6 @@ export default function Toolbar() {
     )
   }
 
-  // Shared tool button style
   function toolBtn(id: Tool, icon: string, label: string, onClick?: () => void) {
     return (
       <button
@@ -140,7 +178,6 @@ export default function Toolbar() {
     )
   }
 
-  // Color swatch button
   function colorSwatch(hex: string, name: string, small = false) {
     const active = color === hex
     return (
@@ -156,7 +193,6 @@ export default function Toolbar() {
     )
   }
 
-  // Native colour picker trigger (rainbow circle)
   function ColorPickerTrigger() {
     const isCustom = !COLORS.some((c) => c.hex === color)
     return (
@@ -213,12 +249,7 @@ export default function Toolbar() {
 
       {/* Pencil + shapes + stroke expander */}
       <div ref={drawGroupRef} className="relative flex items-start">
-        {toolBtn(
-          'draw',
-          '✎',
-          'Free draw',
-          () => { setTool('draw') }
-        )}
+        {toolBtn('draw', '✎', 'Free draw', () => { setTool('draw') })}
         <PlusBox panel="draw" />
         {openPanel === 'draw' && (
           <div className="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl px-3 py-2 flex items-center gap-2 whitespace-nowrap">
@@ -251,7 +282,29 @@ export default function Toolbar() {
 
       <div className="w-px h-6 bg-slate-700 mx-1" />
 
-      {/* Colour: black + white shown inline, + opens full palette */}
+      {/* Image upload */}
+      <label
+        title="Upload and place an image"
+        className={`w-10 h-10 rounded flex items-center justify-center text-lg font-semibold transition-colors cursor-pointer ${
+          tool === 'image' ? 'bg-orange-600' : 'hover:bg-slate-700'
+        }`}
+      >
+        🖼
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          hidden
+          onChange={handleImageUpload}
+        />
+      </label>
+
+      {/* Form fill */}
+      {toolBtn('form', '⌨', 'Fill form fields')}
+
+      <div className="w-px h-6 bg-slate-700 mx-1" />
+
+      {/* Colour */}
       <div ref={colorGroupRef} className="relative flex items-start gap-1">
         <div className="flex items-center gap-1 self-center">
           {colorSwatch('#000000', 'Black', true)}
@@ -290,6 +343,17 @@ export default function Toolbar() {
           </button>
         )}
         <SignatureMenu />
+
+        {/* AI Tools */}
+        <button
+          onClick={onAIOpen}
+          title="AI Tools"
+          className="px-3 h-10 rounded bg-slate-700 hover:bg-violet-700 text-sm font-medium flex items-center gap-1.5"
+        >
+          <span>✦</span>
+          <span>AI</span>
+        </button>
+
         <button
           onClick={undo}
           disabled={annotations.length === 0}
@@ -312,6 +376,27 @@ export default function Toolbar() {
         >
           Preview
         </button>
+        <div className="relative group">
+          <button
+            onClick={onCompress}
+            disabled={!sourceBytes || compressing}
+            className="px-3 h-10 rounded bg-slate-700 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm"
+            title="Reduce PDF file size"
+          >
+            {compressing ? 'Compressing…' : '⬇ Compress'}
+          </button>
+          {compressResult && (
+            <div className="absolute top-full right-0 mt-1 z-50 bg-slate-900 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-xl border border-slate-700">
+              <div>Original: {(compressResult.orig / 1024).toFixed(0)} KB</div>
+              <div>Compressed: {(compressResult.compressed / 1024).toFixed(0)} KB</div>
+              <div className="text-emerald-400 font-medium mt-0.5">
+                {compressResult.compressed < compressResult.orig
+                  ? `Saved ${(((compressResult.orig - compressResult.compressed) / compressResult.orig) * 100).toFixed(1)}%`
+                  : 'Already optimised'}
+              </div>
+            </div>
+          )}
+        </div>
         <button
           onClick={onExport}
           disabled={!sourceBytes || exporting}
@@ -325,7 +410,6 @@ export default function Toolbar() {
 
   // --- MOBILE TOOLBAR (bottom, fixed) --------------------------------------
 
-  // Mobile expandable panel (floats above toolbar)
   const mobilePanelContent = (() => {
     if (openPanel === 'text') {
       return (
@@ -408,7 +492,6 @@ export default function Toolbar() {
     return null
   })()
 
-  // Mobile toolbar button with optional "+" badge
   function mobileBtnWithPlus(
     id: Tool,
     icon: string,
@@ -515,9 +598,39 @@ export default function Toolbar() {
         {/* Text with + */}
         {mobileBtnWithPlus('text', 'T', 'Text', 'text')}
 
+        {/* Image upload */}
+        <label className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 cursor-pointer ${tool === 'image' ? 'text-orange-400' : 'text-slate-200'}`}>
+          <span className="text-xl leading-none">🖼</span>
+          <span className="text-[10px] font-medium">Image</span>
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            hidden
+            onChange={handleImageUpload}
+          />
+        </label>
+
         <div className="flex-1 h-full flex items-stretch">
           <SignatureMenu openUpward compact />
         </div>
+
+        {/* Form fill */}
+        <button
+          onClick={() => setTool('form')}
+          className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 ${tool === 'form' ? 'text-orange-400' : 'text-slate-200'}`}
+        >
+          <span className="text-xl leading-none">⌨</span>
+          <span className="text-[10px] font-medium">Form</span>
+        </button>
+
+        {/* AI */}
+        <button
+          onClick={onAIOpen}
+          className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-violet-300"
+        >
+          <span className="text-xl leading-none">✦</span>
+          <span className="text-[10px] font-medium">AI</span>
+        </button>
 
         {/* Colour with + */}
         <div className="flex flex-col items-center justify-center flex-1 h-full relative">

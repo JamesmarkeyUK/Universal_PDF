@@ -3,9 +3,13 @@ import Toolbar from './components/Toolbar/Toolbar'
 import PdfViewer from './components/Viewer/PdfViewer'
 import PageNavigator from './components/Viewer/PageNavigator'
 import SignaturePad from './components/Signature/SignaturePad'
+import StampPicker from './components/Signature/StampPicker'
+import EmailVerifyModal from './components/Signature/EmailVerifyModal'
+import AIToolsPanel from './components/AI/AIToolsPanel'
 import RecentFilesList from './components/RecentFiles/RecentFilesList'
 import LivePreview from './components/Preview/LivePreview'
 import { usePdfStore } from './stores/pdfStore'
+import { useSignatureStore } from './stores/signatureStore'
 
 function isPdfFile(file: File) {
   return file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
@@ -18,6 +22,11 @@ export default function App() {
   const doc = usePdfStore((s) => s.doc)
   const loading = usePdfStore((s) => s.loading)
   const refreshRecents = usePdfStore((s) => s.refreshRecents)
+
+  const stampPickerOpen = useSignatureStore((s) => s.stampPickerOpen)
+  const emailVerifyOpen = useSignatureStore((s) => s.emailVerifyOpen)
+
+  const [aiOpen, setAiOpen] = useState(false)
 
   useEffect(() => {
     refreshRecents()
@@ -128,7 +137,7 @@ export default function App() {
         </div>
       </header>
 
-      {doc && <Toolbar />}
+      {doc && <Toolbar onAIOpen={() => setAiOpen(true)} />}
 
       <main className="flex-1 min-h-0 pb-16 md:pb-0">
         {loading ? (
@@ -167,6 +176,9 @@ export default function App() {
 
       <PageNavigator />
       <SignaturePad />
+      {stampPickerOpen && <StampPicker />}
+      {emailVerifyOpen && <EmailVerifyModal />}
+      <AIToolsPanel open={aiOpen} onClose={() => setAiOpen(false)} />
       <LivePreview />
     </div>
   )

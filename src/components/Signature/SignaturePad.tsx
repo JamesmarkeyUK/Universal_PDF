@@ -10,6 +10,7 @@ export default function SignaturePad() {
   const open = useSignatureStore((s) => s.padOpen)
   const closePad = useSignatureStore((s) => s.closePad)
   const add = useSignatureStore((s) => s.add)
+  const openEmailVerify = useSignatureStore((s) => s.openEmailVerify)
 
   const stageRef = useRef<Konva.Stage>(null)
   const [lines, setLines] = useState<number[][]>([])
@@ -53,7 +54,7 @@ export default function SignaturePad() {
     closePad()
   }
 
-  function save() {
+  function save(andVerify = false) {
     if (lines.length === 0) return
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
     for (const line of lines) {
@@ -81,15 +82,14 @@ export default function SignaturePad() {
       pixelRatio: 2,
       mimeType: 'image/png'
     })
-    add({
-      name: name.trim() || `Signature ${useSignatureStore.getState().signatures.length + 1}`,
-      dataUrl,
-      width: w,
-      height: h
-    })
+    const sigName = name.trim() || `Signature ${useSignatureStore.getState().signatures.length + 1}`
+    const id = add({ name: sigName, dataUrl, width: w, height: h })
     setLines([])
     setName('')
     closePad()
+    if (andVerify) {
+      openEmailVerify(id)
+    }
   }
 
   return (
@@ -153,13 +153,25 @@ export default function SignaturePad() {
             Cancel
           </button>
           <button
-            onClick={save}
+            onClick={() => save(false)}
             disabled={lines.length === 0}
             className="px-4 py-2 bg-orange-600 hover:bg-orange-500 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded text-sm font-medium"
           >
             Save
           </button>
+          <button
+            onClick={() => save(true)}
+            disabled={lines.length === 0}
+            title="Save and verify with email"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded text-sm font-medium flex items-center gap-1.5"
+          >
+            <span>✉</span>
+            <span>Save &amp; Verify</span>
+          </button>
         </div>
+        <p className="mt-2 text-xs text-slate-400">
+          "Save &amp; Verify" lets you attach a verified email address to this signature.
+        </p>
       </div>
     </div>
   )

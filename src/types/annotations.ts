@@ -7,6 +7,7 @@ export type Tool =
   | 'cross'
   | 'image'
   | 'signature'
+  | 'form'
 
 type Base = { id: string; pageIndex: number }
 
