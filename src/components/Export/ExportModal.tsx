@@ -6,6 +6,8 @@ import { buildAnnotatedPdfBytes, compressPdf, downloadPdfBytes } from '../../lib
 
 const EXPORT_SCALE = 1.4
 
+type Variant = 'original' | 'compressed'
+
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
@@ -57,7 +59,13 @@ export default function ExportModal({ open, onClose }: Props) {
   const [compressed, setCompressed] = useState<Uint8Array | null>(null)
   const [building, setBuilding] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [tab, setTab] = useState<Variant>('compressed')
   const buildIdRef = useRef(0)
+
+  useEffect(() => {
+    if (!open) return
+    setTab('compressed')
+  }, [open])
 
   useEffect(() => {
     if (!open || !sourceBytes) return
@@ -102,6 +110,7 @@ export default function ExportModal({ open, onClose }: Props) {
   const saved = origSize - compSize
   const pct = origSize > 0 ? (saved / origSize) * 100 : 0
   const didShrink = saved > 0
+  const effectiveTab: Variant = ready && tab === 'compressed' && !didShrink ? 'original' : tab
 
   const outNameBase = (fileName ?? 'document.pdf').replace(/\.pdf$/i, '')
   const originalName = `${outNameBase}-annotated.pdf`
@@ -151,88 +160,105 @@ export default function ExportModal({ open, onClose }: Props) {
         ) : (
           <>
             <div className="rounded-lg border border-slate-200 overflow-hidden">
-              <div className="grid grid-cols-2 divide-x divide-slate-200">
-                <div className="p-4">
-                  <div className="text-xs uppercase tracking-wide text-slate-500 font-medium">Original</div>
-                  <div className="mt-1 text-xl font-semibold text-slate-900 tabular-nums">
-                    {building || !annotated ? '…' : formatSize(origSize)}
-                  </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">annotations baked in</div>
-                </div>
-                <div className="p-4">
-                  <div className="text-xs uppercase tracking-wide text-slate-500 font-medium">Compressed</div>
-                  <div className="mt-1 text-xl font-semibold text-slate-900 tabular-nums">
-                    {building || !compressed ? '…' : formatSize(compSize)}
-                  </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">object-stream re-save</div>
-                </div>
+              <div className="flex bg-slate-50 border-b border-slate-200" role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={effectiveTab === 'original'}
+                  onClick={() => setTab('original')}
+                  className={[
+                    'flex-1 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
+                    effectiveTab === 'original'
+                      ? 'border-orange-600 text-slate-900 bg-white'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                  ].join(' ')}
+                >
+                  Original
+                  {ready && (
+                    <span className="ml-2 text-[11px] text-slate-400 tabular-nums font-normal">
+                      {formatSize(origSize)}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={effectiveTab === 'compressed'}
+                  onClick={() => setTab('compressed')}
+                  disabled={ready ? !didShrink : false}
+                  title={ready && !didShrink ? 'Already optimised — same size as Original' : undefined}
+                  className={[
+                    'flex-1 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors disabled:cursor-not-allowed',
+                    effectiveTab === 'compressed'
+                      ? 'border-orange-600 text-slate-900 bg-white'
+                      : 'border-transparent text-slate-500 hover:text-slate-700 disabled:text-slate-300 disabled:hover:text-slate-300'
+                  ].join(' ')}
+                >
+                  Compressed
+                  {ready && didShrink && (
+                    <span className="ml-2 text-[11px] font-medium tabular-nums text-emerald-700">
+                      −{pct.toFixed(0)}%
+                    </span>
+                  )}
+                  {ready && !didShrink && (
+                    <span className="ml-2 text-[11px] font-normal text-slate-400">no savings</span>
+                  )}
+                </button>
               </div>
-              <div
-                className={[
-                  'px-4 py-2 text-sm font-medium border-t border-slate-200',
-                  ready && didShrink
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : ready
-                      ? 'bg-slate-50 text-slate-600'
-                      : 'bg-slate-50 text-slate-400'
-                ].join(' ')}
-              >
-                {!ready
-                  ? 'Building export…'
-                  : didShrink
-                    ? `Saved ${formatSize(saved)} (${pct.toFixed(1)}%)`
-                    : 'Already optimised — no further savings possible.'}
+
+              <div className="p-4">
+                {!ready ? (
+                  <div className="text-sm text-slate-500">Building export…</div>
+                ) : effectiveTab === 'original' ? (
+                  <>
+                    <div className="flex items-baseline gap-3 flex-wrap">
+                      <div className="text-2xl font-semibold text-slate-900 tabular-nums">
+                        {formatSize(origSize)}
+                      </div>
+                      <div className="text-xs text-slate-500">annotations baked in</div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-baseline gap-3 flex-wrap">
+                      <div className="text-2xl font-semibold text-slate-900 tabular-nums">
+                        {formatSize(compSize)}
+                      </div>
+                      <div className="text-xs font-medium text-emerald-700">
+                        Saved {formatSize(saved)} ({pct.toFixed(1)}%)
+                      </div>
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">object-stream re-save</div>
+                  </>
+                )}
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center gap-2">
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
+              <button
+                onClick={() => download(effectiveTab)}
+                disabled={!ready}
+                className="px-4 py-2.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2"
+              >
+                <span aria-hidden="true">⬇</span>
+                Download {effectiveTab === 'original' ? 'Original' : 'Compressed'}
+              </button>
               <button
                 onClick={openPrintPreview}
                 disabled={!ready}
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed rounded text-sm font-medium text-slate-700 flex items-center gap-1.5"
+                className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-medium text-slate-700 flex items-center justify-center gap-1.5"
               >
                 <span aria-hidden="true">◎</span>
-                Print Preview…
+                Preview
               </button>
               <button
                 onClick={doPrint}
                 disabled={!ready}
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed rounded text-sm font-medium text-slate-700 flex items-center gap-1.5"
+                className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-medium text-slate-700 flex items-center justify-center gap-1.5"
               >
                 <span aria-hidden="true">🖨</span>
                 Print
               </button>
-            </div>
-
-            <div className="mt-5 border-t border-slate-200 pt-4">
-              <div className="text-xs uppercase tracking-wide text-slate-500 font-medium mb-2">Download</div>
-              <div className="grid sm:grid-cols-2 gap-2">
-                <button
-                  onClick={() => download('original')}
-                  disabled={!ready}
-                  className="px-4 py-3 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium text-left"
-                >
-                  <div>⬇ Original</div>
-                  <div className="text-[11px] opacity-90 tabular-nums">
-                    {ready ? formatSize(origSize) : '…'}
-                  </div>
-                </button>
-                <button
-                  onClick={() => download('compressed')}
-                  disabled={!ready || !didShrink}
-                  title={ready && !didShrink ? 'Already optimised — same size as Original' : undefined}
-                  className="px-4 py-3 bg-orange-700 hover:bg-orange-600 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium text-left"
-                >
-                  <div>⬇ Compressed</div>
-                  <div className="text-[11px] opacity-90 tabular-nums">
-                    {!ready
-                      ? '…'
-                      : didShrink
-                        ? `${formatSize(compSize)} · −${pct.toFixed(0)}%`
-                        : 'No further savings'}
-                  </div>
-                </button>
-              </div>
             </div>
           </>
         )}
