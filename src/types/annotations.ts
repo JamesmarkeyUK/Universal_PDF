@@ -12,6 +12,8 @@ export type Tool =
 
 type Base = { id: string; pageIndex: number }
 
+export type FontFamily = 'sans' | 'serif' | 'mono'
+
 export type TextAnnotation = Base & {
   type: 'text'
   x: number
@@ -19,6 +21,7 @@ export type TextAnnotation = Base & {
   text: string
   color: string
   fontSize: number
+  fontFamily?: FontFamily
 }
 
 export type DrawAnnotation = Base & {

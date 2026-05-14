@@ -1,11 +1,12 @@
 import { create } from 'zustand'
-import type { Annotation, Tool } from '../types/annotations'
+import type { Annotation, FontFamily, Tool } from '../types/annotations'
 
 interface AnnotationState {
   tool: Tool
   color: string
   strokeWidth: number
   fontSize: number
+  fontFamily: FontFamily
   annotations: Annotation[]
   selectedId: string | null
   uploadedImageSrc: string | null
@@ -13,6 +14,7 @@ interface AnnotationState {
   setColor: (c: string) => void
   setStrokeWidth: (w: number) => void
   setFontSize: (s: number) => void
+  setFontFamily: (f: FontFamily) => void
   setSelected: (id: string | null) => void
   setUploadedImageSrc: (src: string | null) => void
   add: (a: Annotation) => void
@@ -28,6 +30,7 @@ export const useAnnotationStore = create<AnnotationState>((set) => ({
   color: '#000000',
   strokeWidth: 2.5,
   fontSize: 18,
+  fontFamily: 'sans',
   annotations: [],
   selectedId: null,
   uploadedImageSrc: null,
@@ -71,6 +74,19 @@ export const useAnnotationStore = create<AnnotationState>((set) => ({
         }
       }
       return { fontSize }
+    }),
+  setFontFamily: (fontFamily) =>
+    set((s) => {
+      const sel = s.annotations.find((a) => a.id === s.selectedId)
+      if (sel && sel.type === 'text') {
+        return {
+          fontFamily,
+          annotations: s.annotations.map((a) =>
+            a.id === sel.id ? ({ ...a, fontFamily } as Annotation) : a
+          )
+        }
+      }
+      return { fontFamily }
     }),
   setSelected: (selectedId) => set({ selectedId }),
   add: (a) => set((s) => ({ annotations: [...s.annotations, a], selectedId: a.id })),

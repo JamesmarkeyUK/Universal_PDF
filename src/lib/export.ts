@@ -48,7 +48,11 @@ export async function buildAnnotatedPdfBytes(
   formValues?: FormFieldValue[]
 ): Promise<Uint8Array> {
   const pdf = await PDFDocument.load(sourceBytes)
-  const font = await pdf.embedFont(StandardFonts.Helvetica)
+  const fontSans = await pdf.embedFont(StandardFonts.Helvetica)
+  const fontSerif = await pdf.embedFont(StandardFonts.TimesRoman)
+  const fontMono = await pdf.embedFont(StandardFonts.Courier)
+  const pickFont = (fam?: 'sans' | 'serif' | 'mono') =>
+    fam === 'serif' ? fontSerif : fam === 'mono' ? fontMono : fontSans
   const pages = pdf.getPages()
 
   // Fill PDF form fields if any
@@ -92,7 +96,7 @@ export async function buildAnnotatedPdfBytes(
             x: sx(a.x),
             y: ph - baselineY / scale,
             size: a.fontSize / scale,
-            font,
+            font: pickFont(a.fontFamily),
             color: hexToPdfRgb(a.color)
           })
           break

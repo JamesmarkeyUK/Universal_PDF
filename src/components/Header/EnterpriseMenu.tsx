@@ -61,6 +61,7 @@ export default function EnterpriseMenu({ onAIOpen, aiEnabled = true }: Props) {
     { key: 'projects', label: 'Projects', description: 'Group PDFs into shared workspaces.', icon: '📁', kind: 'action', action: 'soon', badge: 'Soon' },
     { key: 'team', label: 'Team Collaboration', description: 'Multi-user editing, comments and roles.', icon: '👥', kind: 'action', action: 'soon', badge: 'Soon' },
     { key: 'branding', label: 'Your Branding', description: 'Logo, colour theme and custom domain.', icon: '🎨', kind: 'action', action: 'soon', badge: 'Soon' },
+    { key: 'fonts', label: 'Customised fonts', description: 'Upload your brand fonts and use them in any PDF.', icon: 'Aa', kind: 'action', action: 'soon', badge: 'Soon' },
     { key: 'ai', label: 'AI Features', description: 'Smart summaries, redaction and auto-fill.', icon: '✦', kind: 'action', action: 'ai' }
   ]
 
