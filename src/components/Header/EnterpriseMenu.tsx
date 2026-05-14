@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 const UPSELL_URL = 'https://www.unisim.co.uk'
+const REPO_URL = 'https://github.com/JamesmarkeyUK/Universal_PDF'
 
 type Item =
   | {
@@ -58,6 +59,7 @@ export default function EnterpriseMenu({ onAIOpen, aiEnabled = true }: Props) {
 
   const items: Item[] = [
     { key: 'pro', label: 'Go PRO', description: 'Unlimited pages, priority support, no friction.', icon: '★', kind: 'link', href: UPSELL_URL, highlight: true },
+    { key: 'self-host', label: 'Self host for FREE', description: 'Clone the repo and run it on your own server. MIT-licensed.', icon: '⌂', kind: 'link', href: REPO_URL, badge: 'Open source' },
     { key: 'projects', label: 'Projects', description: 'Group PDFs into shared workspaces.', icon: '📁', kind: 'action', action: 'soon', badge: 'Soon' },
     { key: 'team', label: 'Team Collaboration', description: 'Multi-user editing, comments and roles.', icon: '👥', kind: 'action', action: 'soon', badge: 'Soon' },
     { key: 'branding', label: 'Your Branding', description: 'Logo, colour theme and custom domain.', icon: '🎨', kind: 'action', action: 'soon', badge: 'Soon' },

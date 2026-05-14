@@ -2,6 +2,8 @@ const DB_NAME = 'universal-pdf'
 const STORE = 'recents'
 const VERSION = 1
 const MAX_RECENTS = 8
+const SLUG_LEN = 8
+const SLUG_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789'
 
 export interface RecentFile {
   id: string
@@ -9,6 +11,7 @@ export interface RecentFile {
   size: number
   lastOpened: number
   bytes: ArrayBuffer
+  slug?: string
 }
 
 export interface RecentMeta {
@@ -16,6 +19,21 @@ export interface RecentMeta {
   name: string
   size: number
   lastOpened: number
+  slug?: string
+}
+
+export function generateSlug(): string {
+  const bytes = new Uint8Array(SLUG_LEN)
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes)
+  } else {
+    for (let i = 0; i < SLUG_LEN; i++) bytes[i] = Math.floor(Math.random() * 256)
+  }
+  let out = ''
+  for (let i = 0; i < SLUG_LEN; i++) {
+    out += SLUG_ALPHABET[bytes[i] % SLUG_ALPHABET.length]
+  }
+  return out
 }
 
 function openDB(): Promise<IDBDatabase> {
@@ -42,7 +60,7 @@ export async function listRecents(): Promise<RecentMeta[]> {
       req.onsuccess = () => {
         const all = req.result as RecentFile[]
         const metas = all
-          .map((f) => ({ id: f.id, name: f.name, size: f.size, lastOpened: f.lastOpened }))
+          .map((f) => ({ id: f.id, name: f.name, size: f.size, lastOpened: f.lastOpened, slug: f.slug }))
           .sort((a, b) => b.lastOpened - a.lastOpened)
         resolve(metas)
       }
@@ -54,9 +72,32 @@ export async function listRecents(): Promise<RecentMeta[]> {
   }
 }
 
-export async function saveRecent(name: string, bytes: ArrayBuffer): Promise<void> {
+export async function getRecentBySlug(slug: string): Promise<{ meta: RecentMeta; bytes: ArrayBuffer } | null> {
   try {
     const db = await openDB()
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readonly')
+      const req = tx.objectStore(STORE).getAll()
+      req.onsuccess = () => {
+        const match = (req.result as RecentFile[]).find((f) => f.slug === slug)
+        if (!match) return resolve(null)
+        resolve({
+          meta: { id: match.id, name: match.name, size: match.size, lastOpened: match.lastOpened, slug: match.slug },
+          bytes: match.bytes
+        })
+      }
+      req.onerror = () => reject(req.error)
+    })
+  } catch (e) {
+    console.warn('recents.getRecentBySlug failed:', e)
+    return null
+  }
+}
+
+export async function saveRecent(name: string, bytes: ArrayBuffer): Promise<string | null> {
+  try {
+    const db = await openDB()
+    let slug: string | null = null
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE, 'readwrite')
       const store = tx.objectStore(STORE)
@@ -64,12 +105,21 @@ export async function saveRecent(name: string, bytes: ArrayBuffer): Promise<void
       allReq.onsuccess = () => {
         const all = allReq.result as RecentFile[]
         const existing = all.find((f) => f.name === name)
+        let entrySlug = existing?.slug
+        if (!entrySlug) {
+          // Avoid (extremely unlikely) collisions with other recents
+          do {
+            entrySlug = generateSlug()
+          } while (all.some((f) => f.slug === entrySlug))
+        }
+        slug = entrySlug
         const entry: RecentFile = {
           id: existing?.id ?? crypto.randomUUID(),
           name,
           size: bytes.byteLength,
           lastOpened: Date.now(),
-          bytes
+          bytes,
+          slug: entrySlug
         }
         store.put(entry)
         // Evict oldest if over the cap
@@ -82,8 +132,10 @@ export async function saveRecent(name: string, bytes: ArrayBuffer): Promise<void
       tx.oncomplete = () => resolve()
       tx.onerror = () => reject(tx.error)
     })
+    return slug
   } catch (e) {
     console.warn('recents.saveRecent failed:', e)
+    return null
   }
 }
 
