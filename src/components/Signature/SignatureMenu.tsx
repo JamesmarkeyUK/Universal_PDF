@@ -170,19 +170,27 @@ export default function SignatureMenu({ openUpward = false, compact = false }: S
                 + Draw new
               </button>
               <button
-                onClick={() => { openImport(); setOpen(false) }}
+                onClick={() => { openImport('signature'); setOpen(false) }}
                 className="px-3 py-2.5 text-sm font-medium text-orange-600 hover:bg-orange-50 border-l border-slate-100"
               >
                 + Import image
               </button>
             </div>
           ) : (
-            <button
-              onClick={() => { openStampPicker(); setOpen(false) }}
-              className="w-full px-3 py-2.5 text-sm font-medium text-orange-600 hover:bg-orange-50 border-t border-slate-100"
-            >
-              + Add stamp
-            </button>
+            <div className="grid grid-cols-2 border-t border-slate-100">
+              <button
+                onClick={() => { openStampPicker(); setOpen(false) }}
+                className="px-3 py-2.5 text-sm font-medium text-orange-600 hover:bg-orange-50"
+              >
+                + Preset stamps
+              </button>
+              <button
+                onClick={() => { openImport('stamp'); setOpen(false) }}
+                className="px-3 py-2.5 text-sm font-medium text-orange-600 hover:bg-orange-50 border-l border-slate-100"
+              >
+                + Import image
+              </button>
+            </div>
           )}
         </div>
       )}
