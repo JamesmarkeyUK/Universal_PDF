@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAnnotationStore } from '../../stores/annotationStore'
 import { usePdfStore } from '../../stores/pdfStore'
+import { LANGS, persistLang, readSavedLang, type LangCode } from '../../lib/lang'
 
 interface Props {
   variant?: 'header' | 'toolbar'
@@ -22,8 +23,25 @@ export default function FileMenu({ variant = 'toolbar' }: Props) {
   const canShowPages = !!doc && numPages > 1
 
   const [open, setOpen] = useState(false)
+  const [langSubOpen, setLangSubOpen] = useState(false)
+  const [currentLang, setCurrentLang] = useState<LangCode>(readSavedLang())
+  const [showOtherHint, setShowOtherHint] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const currentLangOpt = LANGS.find((l) => l.code === currentLang) ?? LANGS[0]
+
+  function pickLang(code: LangCode) {
+    if (code === 'other') {
+      setShowOtherHint(true)
+      return
+    }
+    setCurrentLang(code)
+    persistLang(code)
+    setShowOtherHint(false)
+    setLangSubOpen(false)
+    setOpen(false)
+  }
 
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
@@ -46,10 +64,21 @@ export default function FileMenu({ variant = 'toolbar' }: Props) {
   useEffect(() => {
     if (!open) return
     function onDoc(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+        setLangSubOpen(false)
+        setShowOtherHint(false)
+      }
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false)
+      if (e.key === 'Escape') {
+        if (langSubOpen) {
+          setLangSubOpen(false)
+          setShowOtherHint(false)
+        } else {
+          setOpen(false)
+        }
+      }
     }
     document.addEventListener('mousedown', onDoc)
     document.addEventListener('keydown', onKey)
@@ -57,7 +86,7 @@ export default function FileMenu({ variant = 'toolbar' }: Props) {
       document.removeEventListener('mousedown', onDoc)
       document.removeEventListener('keydown', onKey)
     }
-  }, [open])
+  }, [open, langSubOpen])
 
   return (
     <div className="relative" ref={ref}>
@@ -117,6 +146,57 @@ export default function FileMenu({ variant = 'toolbar' }: Props) {
             <span aria-hidden="true">🗑</span>
             <span className="flex-1 text-left">Clear all annotations</span>
           </button>
+
+          {/* Language submenu */}
+          <button
+            onClick={() => { setLangSubOpen((v) => !v); setShowOtherHint(false) }}
+            className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 text-sm border-t border-slate-100"
+            aria-haspopup="true"
+            aria-expanded={langSubOpen}
+          >
+            <span aria-hidden="true">{currentLangOpt.flag}</span>
+            <span className="flex-1 text-left">Language</span>
+            <span className="text-[11px] text-slate-500 uppercase tracking-wide mr-1">
+              {currentLangOpt.code === 'other' ? 'EN' : currentLangOpt.code}
+            </span>
+            <svg viewBox="0 0 12 12" className={`w-3 h-3 transition-transform ${langSubOpen ? '-rotate-90' : ''}`} aria-hidden="true">
+              <path d="M4 2 L8 6 L4 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+
+          {langSubOpen && (
+            <div className="border-t border-slate-100 bg-slate-50/60">
+              {LANGS.map((l) => (
+                <button
+                  key={l.code}
+                  type="button"
+                  onClick={() => pickLang(l.code)}
+                  className={`w-full flex items-center gap-3 pl-8 pr-3 py-2 text-sm transition-colors ${
+                    l.code === currentLang
+                      ? 'text-orange-700 font-medium bg-orange-50/60'
+                      : 'text-slate-700 hover:bg-white'
+                  }`}
+                >
+                  <span aria-hidden="true">{l.flag}</span>
+                  <span className="flex-1 text-left">{l.label}</span>
+                  {l.code === currentLang && <span aria-hidden="true">✓</span>}
+                </button>
+              ))}
+              {showOtherHint && (
+                <div className="px-3 py-2 text-[11px] text-slate-600 border-t border-slate-100">
+                  <a
+                    href="https://www.unisim.co.uk"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-orange-600 hover:underline font-medium"
+                  >
+                    Contact UNI SIM
+                  </a>{' '}
+                  to request a language.
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
