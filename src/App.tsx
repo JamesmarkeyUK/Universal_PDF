@@ -23,12 +23,12 @@ function isPdfFile(file: File) {
 }
 
 export default function App() {
-  const inputRef = useRef<HTMLInputElement>(null)
   const loadFile = usePdfStore((s) => s.loadFile)
   const fileName = usePdfStore((s) => s.fileName)
   const doc = usePdfStore((s) => s.doc)
   const loading = usePdfStore((s) => s.loading)
   const refreshRecents = usePdfStore((s) => s.refreshRecents)
+  const loadFromCurrentUrl = usePdfStore((s) => s.loadFromCurrentUrl)
 
   const stampPickerOpen = useSignatureStore((s) => s.stampPickerOpen)
   const emailVerifyOpen = useSignatureStore((s) => s.emailVerifyOpen)
@@ -37,7 +37,15 @@ export default function App() {
 
   useEffect(() => {
     refreshRecents()
-  }, [refreshRecents])
+    // If we landed on /#abc12345, try to reopen that PDF straight from
+    // IndexedDB so a refresh restores the editor state.
+    loadFromCurrentUrl().catch(() => {})
+    function onHashChange() {
+      loadFromCurrentUrl().catch(() => {})
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [refreshRecents, loadFromCurrentUrl])
 
   const [dragOver, setDragOver] = useState(false)
   const dragCounter = useRef(0)
@@ -87,19 +95,6 @@ export default function App() {
     }
   }, [loadFile])
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (file) {
-      try {
-        await loadFile(file)
-      } catch (err) {
-        console.error(err)
-        alert('Failed to load PDF')
-      }
-    }
-    e.target.value = ''
-  }
-
   return (
     <div className="flex flex-col h-full bg-slate-100">
       <header className="bg-slate-900 text-white">
@@ -116,6 +111,15 @@ export default function App() {
               <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-600 text-white text-[11px] font-bold">U</span>
               <span className="font-semibold tracking-tight">Universal PDF</span>
             </button>
+            <a
+              href="https://github.com/JamesmarkeyUK/Universal_PDF/releases"
+              target="_blank"
+              rel="noreferrer"
+              title={`Universal PDF v${__APP_VERSION__} — release notes`}
+              className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide font-medium bg-white/10 text-slate-300 hover:bg-white/15 hover:text-white ring-1 ring-white/10 leading-none"
+            >
+              v{__APP_VERSION__}
+            </a>
             {doc && <FileMenu variant="header" />}
           </div>
           <div className="flex justify-center min-w-0">
@@ -127,21 +131,6 @@ export default function App() {
               aiEnabled={!!doc}
             />
             <LanguageMenu />
-            {!doc && (
-              <button
-                onClick={() => inputRef.current?.click()}
-                className="bg-orange-600 hover:bg-orange-500 px-3 py-1.5 rounded text-sm font-medium"
-              >
-                Open PDF
-              </button>
-            )}
-            <input
-              ref={inputRef}
-              type="file"
-              accept="application/pdf"
-              hidden
-              onChange={onFile}
-            />
           </div>
         </div>
       </header>

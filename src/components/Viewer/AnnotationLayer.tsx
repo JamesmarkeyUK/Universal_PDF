@@ -680,7 +680,7 @@ function TextEditor({
         top: annotation.y,
         color: annotation.color,
         fontSize: annotation.fontSize + 'px',
-        fontFamily: 'sans-serif',
+        fontFamily: FONT_STACK[annotation.fontFamily ?? 'sans'],
         lineHeight: 1,
         background: 'transparent',
         border: '1px dashed #ea580c',

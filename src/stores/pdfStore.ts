@@ -1,6 +1,22 @@
 import { create } from 'zustand'
 import { pdfjsLib, type PDFDocumentProxy } from '../lib/pdfjs'
-import { listRecents, saveRecent, getRecent, deleteRecent, renameRecent, type RecentMeta } from '../lib/recents'
+import { listRecents, saveRecent, getRecent, getRecentBySlug, deleteRecent, renameRecent, type RecentMeta } from '../lib/recents'
+
+function setHashSlug(slug: string | null) {
+  if (typeof window === 'undefined') return
+  const target = slug ? `#${slug}` : ''
+  if (window.location.hash === target) return
+  // Use replaceState so the user's browser history doesn't fill up with
+  // every PDF they open in this session.
+  const url = window.location.pathname + window.location.search + target
+  window.history.replaceState(null, '', url)
+}
+
+function readHashSlug(): string | null {
+  if (typeof window === 'undefined') return null
+  const h = window.location.hash.replace(/^#/, '').trim()
+  return /^[a-z0-9]{4,16}$/i.test(h) ? h : null
+}
 
 interface PdfState {
   doc: PDFDocumentProxy | null
@@ -12,6 +28,8 @@ interface PdfState {
   previewOpen: boolean
   recents: RecentMeta[]
   loadFile: (file: File) => Promise<void>
+  loadFromSlug: (slug: string) => Promise<boolean>
+  loadFromCurrentUrl: () => Promise<boolean>
   reset: () => void
   togglePageNav: () => void
   setPageNavOpen: (open: boolean) => void
@@ -49,17 +67,40 @@ export const usePdfStore = create<PdfState>((set, get) => ({
         loading: false
       })
       // Persist to recents in the background — never blocks loading.
+      // The returned slug becomes the URL hash so a refresh reloads the
+      // same PDF straight from IndexedDB.
       saveRecent(file.name, buf)
-        .then(() => get().refreshRecents())
+        .then((slug) => {
+          if (slug) setHashSlug(slug)
+          return get().refreshRecents()
+        })
         .catch(() => {})
     } catch (e) {
       set({ loading: false })
       throw e
     }
   },
+  loadFromSlug: async (slug) => {
+    const hit = await getRecentBySlug(slug)
+    if (!hit) return false
+    const file = new File([hit.bytes], hit.meta.name, { type: 'application/pdf' })
+    await get().loadFile(file)
+    return true
+  },
+  loadFromCurrentUrl: async () => {
+    const slug = readHashSlug()
+    if (!slug) return false
+    const ok = await get().loadFromSlug(slug)
+    if (!ok) {
+      // Stale slug — clear the hash so we fall back to the landing page.
+      setHashSlug(null)
+    }
+    return ok
+  },
   reset: () => {
     get().doc?.destroy()
     set({ doc: null, numPages: 0, fileName: null, sourceBytes: null, previewOpen: false })
+    setHashSlug(null)
   },
   refreshRecents: async () => {
     const recents = await listRecents()
