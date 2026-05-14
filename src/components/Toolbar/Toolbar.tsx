@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAnnotationStore } from '../../stores/annotationStore'
 import { usePdfStore } from '../../stores/pdfStore'
-import { useFormStore } from '../../stores/formStore'
-import { exportPdfWithAnnotations, compressPdf, type CompressResult } from '../../lib/export'
 import SignatureMenu from '../Signature/SignatureMenu'
-import CompressResultModal from '../Compress/CompressResultModal'
-import type { Tool } from '../../types/annotations'
+import ExportModal from '../Export/ExportModal'
+import FileMenu from './FileMenu'
+import type { Annotation, Tool } from '../../types/annotations'
 
 const LONG_PRESS_MS = 450
 
@@ -33,22 +32,26 @@ const COLORS = [
   { hex: '#2563eb', name: 'Blue' },
   { hex: '#16a34a', name: 'Green' },
   { hex: '#eab308', name: 'Yellow' },
-  { hex: '#9333ea', name: 'Purple' },
+  { hex: '#9333ea', name: 'Purple' }
 ]
 
 const DRAW_SHAPES: { id: Tool; icon: string; label: string }[] = [
   { id: 'tick', icon: '✓', label: 'Tick' },
   { id: 'cross', icon: '✗', label: 'Cross' },
-  { id: 'rect', icon: '▭', label: 'Box' },
+  { id: 'rect', icon: '▭', label: 'Box' }
 ]
 
-type Panel = 'text' | 'draw' | 'color' | null
+type Panel = 'select' | 'text' | 'draw' | 'color' | null
 
-interface Props {
-  onAIOpen: () => void
-}
+const SELECT_OPTIONS: { id: Tool; icon: string; label: string; help: string }[] = [
+  { id: 'select', icon: '↖', label: 'Select', help: 'Click annotations to move, resize or edit' },
+  { id: 'hand', icon: '✋', label: 'Hand', help: 'Drag to pan around the PDF without selecting' }
+]
 
-export default function Toolbar({ onAIOpen }: Props) {
+// Module-level in-app clipboard for annotations (Ctrl+C/X/V)
+let clipboardAnnotation: Annotation | null = null
+
+export default function Toolbar() {
   const tool = useAnnotationStore((s) => s.tool)
   const color = useAnnotationStore((s) => s.color)
   const strokeWidth = useAnnotationStore((s) => s.strokeWidth)
@@ -60,39 +63,24 @@ export default function Toolbar({ onAIOpen }: Props) {
   const undo = useAnnotationStore((s) => s.undo)
   const clearAll = useAnnotationStore((s) => s.clearAll)
   const remove = useAnnotationStore((s) => s.remove)
+  const add = useAnnotationStore((s) => s.add)
   const fontSize = useAnnotationStore((s) => s.fontSize)
   const setFontSize = useAnnotationStore((s) => s.setFontSize)
   const setUploadedImageSrc = useAnnotationStore((s) => s.setUploadedImageSrc)
 
   const sourceBytes = usePdfStore((s) => s.sourceBytes)
-  const fileName = usePdfStore((s) => s.fileName)
-  const numPages = usePdfStore((s) => s.numPages)
-  const pageNavOpen = usePdfStore((s) => s.pageNavOpen)
-  const togglePageNav = usePdfStore((s) => s.togglePageNav)
-  const setPreviewOpen = usePdfStore((s) => s.setPreviewOpen)
-
-  const formValues = useFormStore((s) => s.values)
-
-  const [exporting, setExporting] = useState(false)
-  const [compressing, setCompressing] = useState(false)
-  const [compressResult, setCompressResult] = useState<CompressResult | null>(null)
-
-  const imageInputRef = useRef<HTMLInputElement>(null)
-
-  function onPreview() {
-    if (!sourceBytes) return
-    setPreviewOpen(true)
-  }
 
   const selectedAnnotation = annotations.find((a) => a.id === selectedId)
   const textSelected = selectedAnnotation?.type === 'text'
 
   const [openPanel, setOpenPanel] = useState<Panel>(null)
+  const [exportOpen, setExportOpen] = useState(false)
 
+  const selectGroupRef = useRef<HTMLDivElement>(null)
   const textGroupRef = useRef<HTMLDivElement>(null)
   const drawGroupRef = useRef<HTMLDivElement>(null)
-  const colorGroupRef = useRef<HTMLDivElement>(null)
   const mobilePanelRef = useRef<HTMLDivElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
 
   const pressTimer = useRef<number | null>(null)
   const longPressed = useRef(false)
@@ -104,7 +92,7 @@ export default function Toolbar({ onAIOpen }: Props) {
   useEffect(() => {
     if (!openPanel) return
     function onDoc(e: MouseEvent) {
-      const refs = [textGroupRef, drawGroupRef, colorGroupRef, mobilePanelRef]
+      const refs = [selectGroupRef, textGroupRef, drawGroupRef, mobilePanelRef]
       const inside = refs.some((r) => r.current?.contains(e.target as Node))
       if (!inside) setOpenPanel(null)
     }
@@ -112,48 +100,68 @@ export default function Toolbar({ onAIOpen }: Props) {
     return () => document.removeEventListener('mousedown', onDoc)
   }, [openPanel])
 
+  // Keyboard shortcuts: Delete/Backspace, Ctrl+Z, Ctrl+C/X/V
   useEffect(() => {
+    function isEditable(t: EventTarget | null): boolean {
+      const el = t as HTMLElement | null
+      if (!el) return false
+      const tag = el.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+      if ((el as HTMLElement).isContentEditable) return true
+      return false
+    }
     function onKey(e: KeyboardEvent) {
-      if (e.key !== 'Delete' && e.key !== 'Backspace') return
-      const t = document.activeElement?.tagName
-      if (t === 'INPUT' || t === 'TEXTAREA') return
-      if (!selectedId) return
-      e.preventDefault()
-      remove(selectedId)
+      if (isEditable(document.activeElement)) return
+      const mod = e.ctrlKey || e.metaKey
+      const key = e.key.toLowerCase()
+      if (mod && key === 'z') {
+        e.preventDefault()
+        undo()
+        return
+      }
+      if (mod && key === 'c') {
+        if (!selectedId) return
+        const sel = useAnnotationStore.getState().annotations.find((a) => a.id === selectedId)
+        if (!sel) return
+        clipboardAnnotation = sel
+        e.preventDefault()
+        return
+      }
+      if (mod && key === 'x') {
+        if (!selectedId) return
+        const sel = useAnnotationStore.getState().annotations.find((a) => a.id === selectedId)
+        if (!sel) return
+        clipboardAnnotation = sel
+        remove(selectedId)
+        e.preventDefault()
+        return
+      }
+      if (mod && key === 'v') {
+        if (!clipboardAnnotation) return
+        const clone: Annotation = JSON.parse(JSON.stringify(clipboardAnnotation))
+        clone.id = crypto.randomUUID()
+        // Offset paste by ~20px so the new copy is visible
+        if ('x' in clone && 'y' in clone) {
+          ;(clone as { x: number; y: number }).x = (clone as { x: number; y: number }).x + 20
+          ;(clone as { x: number; y: number }).y = (clone as { x: number; y: number }).y + 20
+        } else if ('points' in clone) {
+          ;(clone as { points: number[] }).points = (clone as { points: number[] }).points.map((v, i) =>
+            i % 2 === 0 ? v + 20 : v + 20
+          )
+        }
+        add(clone)
+        e.preventDefault()
+        return
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (!selectedId) return
+        e.preventDefault()
+        remove(selectedId)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selectedId, remove])
-
-  async function onExport() {
-    if (!sourceBytes || !fileName) return
-    setExporting(true)
-    try {
-      const copy = sourceBytes.slice(0)
-      await exportPdfWithAnnotations(copy, annotations, 1.4, fileName, formValues)
-    } catch (e) {
-      console.error(e)
-      alert('Export failed: ' + (e as Error).message)
-    } finally {
-      setExporting(false)
-    }
-  }
-
-  async function onCompress() {
-    if (!sourceBytes || !fileName) return
-    setCompressing(true)
-    setCompressResult(null)
-    try {
-      const copy = sourceBytes.slice(0)
-      const result = await compressPdf(copy, fileName)
-      setCompressResult(result)
-    } catch (e) {
-      console.error(e)
-      alert('Compression failed: ' + (e as Error).message)
-    } finally {
-      setCompressing(false)
-    }
-  }
+  }, [selectedId, remove, undo, add])
 
   function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -256,7 +264,7 @@ export default function Toolbar({ onAIOpen }: Props) {
           isCustom ? 'border-white scale-110' : 'border-slate-600 hover:scale-105'
         }`}
         style={{
-          background: 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)',
+          background: 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)'
         }}
       >
         <input
@@ -273,177 +281,149 @@ export default function Toolbar({ onAIOpen }: Props) {
   const desktop = (
     <div className="hidden md:block bg-slate-800 text-white border-b border-slate-700">
       <div className="mx-auto w-full max-w-7xl flex flex-wrap items-center gap-1 px-4 py-2">
-
-      {/* Select */}
-      {toolBtn('select', '↖', 'Select / move')}
-
-      <div className="w-px h-6 bg-slate-700 mx-1" />
-
-      {/* Text + font-size expander */}
-      <div ref={textGroupRef} className="relative flex items-start">
-        {toolBtn('text', 'T', 'Add text', 'text')}
-        <PlusBox panel="text" />
-        {openPanel === 'text' && (
-          <div className="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl px-3 py-2 flex items-center gap-3 whitespace-nowrap">
-            <span className="text-xs text-slate-400">Size</span>
-            <input
-              type="range"
-              min={10}
-              max={48}
-              step={1}
-              value={fontSize}
-              onChange={(e) => setFontSize(parseInt(e.target.value, 10))}
-              className="w-28"
-            />
-            <span className="text-xs text-slate-300 w-9 tabular-nums text-right">{fontSize}px</span>
-          </div>
-        )}
-      </div>
-
-      <div className="w-px h-6 bg-slate-700 mx-1" />
-
-      {/* Pencil + shapes + stroke expander */}
-      <div ref={drawGroupRef} className="relative flex items-start">
-        {toolBtn('draw', '✎', 'Free draw', 'draw')}
-        <PlusBox panel="draw" />
-        {openPanel === 'draw' && (
-          <div className="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl px-3 py-2 flex items-center gap-2 whitespace-nowrap">
-            {DRAW_SHAPES.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => setTool(s.id)}
-                title={s.label}
-                className={`w-9 h-9 rounded flex items-center justify-center text-lg font-semibold transition-colors ${
-                  tool === s.id ? 'bg-orange-600' : 'hover:bg-slate-700'
-                }`}
-              >
-                {s.icon}
-              </button>
-            ))}
-            <div className="w-px h-6 bg-slate-600 mx-1" />
-            <span className="text-xs text-slate-400">Stroke</span>
-            <input
-              type="range"
-              min={1}
-              max={10}
-              step={0.5}
-              value={strokeWidth}
-              onChange={(e) => setStrokeWidth(parseFloat(e.target.value))}
-              className="w-20"
-            />
-          </div>
-        )}
-      </div>
-
-      <div className="w-px h-6 bg-slate-700 mx-1" />
-
-      {/* Image upload */}
-      <label
-        title="Upload and place an image"
-        className={`w-10 h-10 rounded flex items-center justify-center transition-colors cursor-pointer ${
-          tool === 'image' ? 'bg-orange-600' : 'hover:bg-slate-700'
-        }`}
-      >
-        <PictureFrameIcon active={tool === 'image'} />
-        <input
-          ref={imageInputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif"
-          hidden
-          onChange={handleImageUpload}
-        />
-      </label>
-
-      <div className="w-px h-6 bg-slate-700 mx-1" />
-
-      {/* Colour */}
-      <div ref={colorGroupRef} className="relative flex items-start gap-1">
-        <div className="flex items-center gap-1 self-center">
-          {colorSwatch('#000000', 'Black', true)}
-          {colorSwatch('#ffffff', 'White', true)}
+        {/* Select / Hand with options panel */}
+        <div ref={selectGroupRef} className="relative flex items-start">
+          {toolBtn(
+            tool === 'hand' ? 'hand' : 'select',
+            tool === 'hand' ? '✋' : '↖',
+            tool === 'hand' ? 'Hand — drag to pan' : 'Select / move',
+            'select'
+          )}
+          <PlusBox panel="select" />
+          {openPanel === 'select' && (
+            <div className="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl py-1 whitespace-nowrap min-w-56">
+              {SELECT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => { setTool(opt.id); setOpenPanel(null) }}
+                  className={`w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors ${
+                    tool === opt.id ? 'bg-orange-600 text-white' : 'hover:bg-slate-700 text-slate-100'
+                  }`}
+                >
+                  <span className="text-lg leading-none w-5 text-center">{opt.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium">{opt.label}</div>
+                    <div className="text-[11px] opacity-70">{opt.help}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-        <PlusBox panel="color" />
-        {openPanel === 'color' && (
-          <div className="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl px-3 py-2 flex items-center gap-2 whitespace-nowrap">
-            {COLORS.map((c) => colorSwatch(c.hex, c.name))}
-            <div className="w-px h-6 bg-slate-600 mx-1" />
-            <ColorPickerTrigger />
+
+        <div className="w-px h-6 bg-slate-700 mx-1" />
+
+        {/* Text + font-size expander */}
+        <div ref={textGroupRef} className="relative flex items-start">
+          {toolBtn('text', 'T', 'Add text', 'text')}
+          <PlusBox panel="text" />
+          {openPanel === 'text' && (
+            <div className="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl px-3 py-2 flex items-center gap-3 whitespace-nowrap">
+              <span className="text-xs text-slate-400">Size</span>
+              <input
+                type="range"
+                min={10}
+                max={48}
+                step={1}
+                value={fontSize}
+                onChange={(e) => setFontSize(parseInt(e.target.value, 10))}
+                className="w-28"
+              />
+              <span className="text-xs text-slate-300 w-9 tabular-nums text-right">{fontSize}px</span>
+            </div>
+          )}
+        </div>
+
+        <div className="w-px h-6 bg-slate-700 mx-1" />
+
+        {/* Pencil + colours + combined options panel */}
+        <div ref={drawGroupRef} className="relative flex items-start gap-1">
+          {toolBtn('draw', '✎', 'Free draw', 'draw')}
+          <div className="flex items-center gap-1 self-center ml-1">
+            {colorSwatch('#000000', 'Black', true)}
+            {colorSwatch('#ffffff', 'White', true)}
           </div>
-        )}
-      </div>
+          <PlusBox panel="draw" />
+          {openPanel === 'draw' && (
+            <div className="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl px-3 py-2 flex items-center gap-2 whitespace-nowrap">
+              {DRAW_SHAPES.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setTool(s.id)}
+                  title={s.label}
+                  className={`w-9 h-9 rounded flex items-center justify-center text-lg font-semibold transition-colors ${
+                    tool === s.id ? 'bg-orange-600' : 'hover:bg-slate-700'
+                  }`}
+                >
+                  {s.icon}
+                </button>
+              ))}
+              <div className="w-px h-6 bg-slate-600 mx-1" />
+              <span className="text-xs text-slate-400">Stroke</span>
+              <input
+                type="range"
+                min={1}
+                max={10}
+                step={0.5}
+                value={strokeWidth}
+                onChange={(e) => setStrokeWidth(parseFloat(e.target.value))}
+                className="w-20"
+              />
+              <div className="w-px h-6 bg-slate-600 mx-1" />
+              <span className="text-xs text-slate-400">Colour</span>
+              {COLORS.map((c) => colorSwatch(c.hex, c.name))}
+              <ColorPickerTrigger />
+            </div>
+          )}
+        </div>
 
-      {/* Right-side actions */}
-      <div className="ml-auto flex items-center gap-2">
-        {numPages > 1 && (
+        <div className="w-px h-6 bg-slate-700 mx-1" />
+
+        {/* Image upload */}
+        <label
+          title="Upload and place an image"
+          className={`w-10 h-10 rounded flex items-center justify-center transition-colors cursor-pointer ${
+            tool === 'image' ? 'bg-orange-600' : 'hover:bg-slate-700'
+          }`}
+        >
+          <PictureFrameIcon active={tool === 'image'} />
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            hidden
+            onChange={handleImageUpload}
+          />
+        </label>
+
+        {/* Right-side actions */}
+        <div className="ml-auto flex items-center gap-2">
+          {selectedId && (
+            <button
+              onClick={() => remove(selectedId)}
+              title="Delete selected (Del)"
+              className="px-3 h-10 rounded bg-red-600 hover:bg-red-500 text-sm font-medium"
+            >
+              Delete
+            </button>
+          )}
+          <SignatureMenu />
+
+          <FileMenu
+            onUndo={undo}
+            onClear={clearAll}
+            canUndo={annotations.length > 0}
+            canClear={annotations.length > 0}
+          />
+
           <button
-            onClick={togglePageNav}
-            title="Show pages"
-            className={`px-3 h-10 rounded text-sm font-medium ${
-              pageNavOpen ? 'bg-orange-600' : 'bg-slate-700 hover:bg-slate-600'
-            }`}
+            onClick={() => setExportOpen(true)}
+            disabled={!sourceBytes}
+            className="px-4 h-10 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
           >
-            ☰ Pages
+            Export
           </button>
-        )}
-        {selectedId && (
-          <button
-            onClick={() => remove(selectedId)}
-            title="Delete selected (Del)"
-            className="px-3 h-10 rounded bg-red-600 hover:bg-red-500 text-sm font-medium"
-          >
-            Delete
-          </button>
-        )}
-        <SignatureMenu />
-
-        {/* AI Tools */}
-        <button
-          onClick={onAIOpen}
-          title="AI Tools"
-          className="px-3 h-10 rounded bg-slate-700 hover:bg-violet-700 text-sm font-medium flex items-center gap-1.5"
-        >
-          <span>✦</span>
-          <span>AI</span>
-        </button>
-
-        <button
-          onClick={undo}
-          disabled={annotations.length === 0}
-          className="px-3 h-10 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm"
-        >
-          Undo
-        </button>
-        <button
-          onClick={clearAll}
-          disabled={annotations.length === 0}
-          className="px-3 h-10 rounded bg-slate-700 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm"
-        >
-          Clear
-        </button>
-        <button
-          onClick={onPreview}
-          disabled={!sourceBytes}
-          className="px-3 h-10 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm"
-          title="Preview the exported PDF"
-        >
-          Preview
-        </button>
-        <button
-          onClick={onCompress}
-          disabled={!sourceBytes || compressing}
-          className="px-3 h-10 rounded bg-slate-700 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm"
-          title="Reduce PDF file size"
-        >
-          {compressing ? 'Compressing…' : '⬇ Compress'}
-        </button>
-        <button
-          onClick={onExport}
-          disabled={!sourceBytes || exporting}
-          className="px-4 h-10 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
-        >
-          {exporting ? 'Exporting…' : 'Export'}
-        </button>
-      </div>
+        </div>
       </div>
     </div>
   )
@@ -451,6 +431,24 @@ export default function Toolbar({ onAIOpen }: Props) {
   // --- MOBILE TOOLBAR (bottom, fixed) --------------------------------------
 
   const mobilePanelContent = (() => {
+    if (openPanel === 'select') {
+      return (
+        <div className="flex items-center gap-2">
+          {SELECT_OPTIONS.map((opt) => (
+            <button
+              key={opt.id}
+              onClick={() => { setTool(opt.id); setOpenPanel(null) }}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                tool === opt.id ? 'bg-orange-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <span className="text-lg leading-none">{opt.icon}</span>
+              <span>{opt.label}</span>
+            </button>
+          ))}
+        </div>
+      )
+    }
     if (openPanel === 'text') {
       return (
         <div className="flex items-center gap-3">
@@ -458,24 +456,28 @@ export default function Toolbar({ onAIOpen }: Props) {
           <button
             onClick={() => setFontSize(Math.max(10, fontSize - 2))}
             className="w-8 h-8 rounded-full hover:bg-slate-100 text-lg font-semibold text-slate-700"
-          >−</button>
+          >
+            −
+          </button>
           <span className="text-sm font-medium w-10 text-center tabular-nums text-slate-700">
             {fontSize}px
           </span>
           <button
             onClick={() => setFontSize(Math.min(48, fontSize + 2))}
             className="w-8 h-8 rounded-full hover:bg-slate-100 text-lg font-semibold text-slate-700"
-          >+</button>
+          >
+            +
+          </button>
         </div>
       )
     }
     if (openPanel === 'draw') {
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap max-w-[92vw]">
           {DRAW_SHAPES.map((s) => (
             <button
               key={s.id}
-              onClick={() => { setTool(s.id) }}
+              onClick={() => setTool(s.id)}
               title={s.label}
               className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl font-semibold transition-colors ${
                 tool === s.id ? 'bg-orange-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -492,29 +494,23 @@ export default function Toolbar({ onAIOpen }: Props) {
             step={0.5}
             value={strokeWidth}
             onChange={(e) => setStrokeWidth(parseFloat(e.target.value))}
-            className="w-24"
+            className="w-20"
           />
-        </div>
-      )
-    }
-    if (openPanel === 'color') {
-      return (
-        <div className="flex items-center gap-3">
+          <div className="w-px h-7 bg-slate-200 mx-1" />
           {COLORS.map((c) => (
             <button
               key={c.hex}
-              onClick={() => { setColor(c.hex); setOpenPanel(null) }}
-              className={`w-9 h-9 rounded-full border-2 flex-shrink-0 transition-transform ${
+              onClick={() => setColor(c.hex)}
+              className={`w-8 h-8 rounded-full border-2 flex-shrink-0 transition-transform ${
                 color === c.hex ? 'border-slate-900 scale-110' : 'border-slate-200 hover:scale-105'
               }`}
               style={{ backgroundColor: c.hex }}
               title={c.name}
             />
           ))}
-          <div className="w-px h-7 bg-slate-200 mx-1" />
           <label
             title="Custom colour"
-            className={`w-9 h-9 rounded-full cursor-pointer border-2 flex-shrink-0 overflow-hidden transition-transform ${
+            className={`w-8 h-8 rounded-full cursor-pointer border-2 flex-shrink-0 overflow-hidden transition-transform ${
               !COLORS.some((c) => c.hex === color) ? 'border-slate-900 scale-110' : 'border-slate-200 hover:scale-105'
             }`}
             style={{ background: 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)' }}
@@ -522,7 +518,7 @@ export default function Toolbar({ onAIOpen }: Props) {
             <input
               type="color"
               value={color}
-              onChange={(e) => { setColor(e.target.value) }}
+              onChange={(e) => setColor(e.target.value)}
               className="sr-only"
             />
           </label>
@@ -532,12 +528,7 @@ export default function Toolbar({ onAIOpen }: Props) {
     return null
   })()
 
-  function mobileBtnWithPlus(
-    id: Tool,
-    icon: string,
-    label: string,
-    panel: Panel
-  ) {
+  function mobileBtnWithPlus(id: Tool, icon: string, label: string, panel: Panel) {
     const active = tool === id || (panel === 'draw' && isDrawShape(tool))
     return (
       <div className="flex flex-col items-center justify-center flex-1 h-full relative">
@@ -579,7 +570,9 @@ export default function Toolbar({ onAIOpen }: Props) {
                 onClick={() => setFontSize(Math.max(10, fontSize - 2))}
                 className="w-8 h-8 rounded-full hover:bg-slate-100 text-lg font-semibold text-slate-700"
                 aria-label="Decrease text size"
-              >−</button>
+              >
+                −
+              </button>
               <span className="text-xs font-medium w-10 text-center tabular-nums text-slate-700">
                 {fontSize}px
               </span>
@@ -587,7 +580,9 @@ export default function Toolbar({ onAIOpen }: Props) {
                 onClick={() => setFontSize(Math.min(48, fontSize + 2))}
                 className="w-8 h-8 rounded-full hover:bg-slate-100 text-lg font-semibold text-slate-700"
                 aria-label="Increase text size"
-              >+</button>
+              >
+                +
+              </button>
             </div>
           )}
           <button
@@ -603,7 +598,7 @@ export default function Toolbar({ onAIOpen }: Props) {
       {openPanel !== null && mobilePanelContent && (
         <div
           ref={mobilePanelRef}
-          className="fixed bottom-[68px] left-1/2 -translate-x-1/2 z-40 bg-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-2 whitespace-nowrap"
+          className="fixed bottom-[68px] left-1/2 -translate-x-1/2 z-40 bg-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-2 whitespace-nowrap max-w-[96vw] overflow-x-auto"
         >
           {mobilePanelContent}
         </div>
@@ -613,30 +608,15 @@ export default function Toolbar({ onAIOpen }: Props) {
         className="fixed bottom-0 left-0 right-0 z-40 h-16 bg-slate-900 border-t border-slate-700 flex items-stretch px-1"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        {numPages > 1 ? (
-          <button
-            onClick={togglePageNav}
-            className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 ${
-              pageNavOpen ? 'text-orange-400' : 'text-slate-200'
-            }`}
-          >
-            <span className="text-xl leading-none">☰</span>
-            <span className="text-[10px] font-medium">Pages</span>
-          </button>
-        ) : null}
+        {/* Select / Hand with + */}
+        {mobileBtnWithPlus(
+          tool === 'hand' ? 'hand' : 'select',
+          tool === 'hand' ? '✋' : '↖',
+          tool === 'hand' ? 'Hand' : 'Select',
+          'select'
+        )}
 
-        {/* Select */}
-        <button
-          onClick={() => setTool('select')}
-          className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 rounded transition-colors ${
-            tool === 'select' ? 'text-orange-400' : 'text-slate-200'
-          }`}
-        >
-          <span className="text-xl leading-none">↖</span>
-          <span className="text-[10px] font-medium">Select</span>
-        </button>
-
-        {/* Draw with + */}
+        {/* Draw with + (includes shapes/stroke/colour in panel) */}
         {mobileBtnWithPlus('draw', '✎', 'Draw', 'draw')}
 
         {/* Text with + */}
@@ -658,39 +638,6 @@ export default function Toolbar({ onAIOpen }: Props) {
           <SignatureMenu openUpward compact />
         </div>
 
-        {/* AI */}
-        <button
-          onClick={onAIOpen}
-          className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-violet-300"
-        >
-          <span className="text-xl leading-none">✦</span>
-          <span className="text-[10px] font-medium">AI</span>
-        </button>
-
-        {/* Colour with + */}
-        <div className="flex flex-col items-center justify-center flex-1 h-full relative">
-          <button
-            onClick={() => togglePanel('color')}
-            className="flex flex-col items-center justify-center w-full h-full gap-0.5 text-slate-200"
-          >
-            <span
-              className="w-6 h-6 rounded-full border-2 border-white/40"
-              style={{ backgroundColor: color }}
-            />
-            <span className="text-[10px] font-medium">Color</span>
-          </button>
-          <button
-            onClick={() => togglePanel('color')}
-            className={`absolute top-1 right-1 w-[13px] h-[13px] text-[8px] font-bold rounded-[2px] flex items-center justify-center leading-none border ${
-              openPanel === 'color'
-                ? 'bg-orange-500 border-orange-400 text-white'
-                : 'bg-slate-700 border-slate-600 text-slate-400'
-            }`}
-          >
-            +
-          </button>
-        </div>
-
         <button
           onClick={undo}
           disabled={annotations.length === 0}
@@ -701,23 +648,12 @@ export default function Toolbar({ onAIOpen }: Props) {
         </button>
 
         <button
-          onClick={onPreview}
+          onClick={() => setExportOpen(true)}
           disabled={!sourceBytes}
-          className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-slate-200 disabled:opacity-40"
-        >
-          <span className="text-xl leading-none">◎</span>
-          <span className="text-[10px] font-medium">Preview</span>
-        </button>
-
-        <button
-          onClick={onExport}
-          disabled={!sourceBytes || exporting}
           className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <span className="text-xl leading-none">⤓</span>
-          <span className="text-[10px] font-medium">
-            {exporting ? '…' : 'Save'}
-          </span>
+          <span className="text-[10px] font-medium">Save</span>
         </button>
       </nav>
     </div>
@@ -727,12 +663,7 @@ export default function Toolbar({ onAIOpen }: Props) {
     <>
       {desktop}
       {mobile}
-      {compressResult && (
-        <CompressResultModal
-          result={compressResult}
-          onClose={() => setCompressResult(null)}
-        />
-      )}
+      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} />
     </>
   )
 }

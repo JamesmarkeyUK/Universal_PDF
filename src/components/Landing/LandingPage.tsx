@@ -79,7 +79,7 @@ export default function LandingPage() {
       await loadFile(file)
     } catch (err) {
       console.error(err)
-      alert('Failed to open example')
+      alert('Failed to open example: ' + ((err as Error).message || err))
     } finally {
       setOpening(false)
     }
@@ -132,16 +132,17 @@ export default function LandingPage() {
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
-                className="group w-full flex items-center gap-4 p-4 border-2 border-dashed border-slate-300 rounded-xl text-left hover:border-orange-500 hover:bg-orange-50/50 transition-colors"
+                className="group relative w-full flex items-center gap-4 p-5 border-2 border-dashed border-orange-500 bg-orange-50/40 rounded-xl text-left hover:bg-orange-50 hover:border-orange-600 hover:shadow-lg hover:shadow-orange-500/10 transition-all"
               >
-                <div className="shrink-0 w-12 h-12 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform">
+                <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-xl ring-4 ring-orange-500/0 group-hover:ring-orange-500/15 transition-all" />
+                <div className="shrink-0 w-12 h-12 rounded-lg bg-orange-600 text-white flex items-center justify-center text-2xl shadow-sm group-hover:scale-105 transition-transform">
                   📄
                 </div>
                 <div className="min-w-0">
-                  <div className="font-semibold text-slate-900">Open a PDF</div>
-                  <div className="text-sm text-slate-500">Click to choose, or drop a file anywhere</div>
+                  <div className="font-semibold text-slate-900 text-base">Open a PDF</div>
+                  <div className="text-sm text-slate-600">Click to choose, or drop a file anywhere</div>
                 </div>
-                <span className="ml-auto text-slate-400 group-hover:text-orange-600 transition-colors" aria-hidden="true">
+                <span className="ml-auto text-orange-600 text-lg group-hover:translate-x-0.5 transition-transform" aria-hidden="true">
                   →
                 </span>
               </button>
