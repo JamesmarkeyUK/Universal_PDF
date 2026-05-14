@@ -11,8 +11,17 @@ import LandingPage from './components/Landing/LandingPage'
 import LivePreview from './components/Preview/LivePreview'
 import EnterpriseMenu from './components/Header/EnterpriseMenu'
 import FileNameEditor from './components/Header/FileNameEditor'
-import LanguageMenu from './components/Header/LanguageMenu'
+import VersionChip from './components/Header/VersionChip'
 import FileMenu from './components/Toolbar/FileMenu'
+
+// Apply the saved language to <html lang> on first mount.
+import { persistLang, readSavedLang } from './lib/lang'
+if (typeof document !== 'undefined') {
+  document.documentElement.lang = readSavedLang()
+  // Re-run persist (no-op if unchanged) so this stays in sync if the
+  // user clears storage between sessions.
+  persistLang(readSavedLang())
+}
 import { usePdfStore } from './stores/pdfStore'
 import { useSignatureStore } from './stores/signatureStore'
 
@@ -111,16 +120,8 @@ export default function App() {
               <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-600 text-white text-[11px] font-bold">U</span>
               <span className="font-semibold tracking-tight">Universal PDF</span>
             </button>
-            <a
-              href="https://github.com/JamesmarkeyUK/Universal_PDF/releases"
-              target="_blank"
-              rel="noreferrer"
-              title={`Universal PDF v${__APP_VERSION__} — release notes`}
-              className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide font-medium bg-white/10 text-slate-300 hover:bg-white/15 hover:text-white ring-1 ring-white/10 leading-none"
-            >
-              v{__APP_VERSION__}
-            </a>
-            {doc && <FileMenu variant="header" />}
+            <VersionChip />
+            <FileMenu variant="header" />
           </div>
           <div className="flex justify-center min-w-0">
             {fileName && <FileNameEditor />}
@@ -130,7 +131,6 @@ export default function App() {
               onAIOpen={() => setAiOpen(true)}
               aiEnabled={!!doc}
             />
-            <LanguageMenu />
           </div>
         </div>
       </header>
