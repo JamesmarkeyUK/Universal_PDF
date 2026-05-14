@@ -22,7 +22,11 @@ interface Props {
 
 export default function FormFieldLayer({ page, pageIndex, scale, pageHeight }: Props) {
   const [fields, setFields] = useState<FieldInfo[]>([])
-  const getValue = useFormStore((s) => s.getValue)
+  // Subscribe to the values array so the inputs re-render as the user types.
+  // Subscribing to `getValue` alone returns a stable function reference and
+  // never wakes the component, so the controlled inputs would silently lose
+  // keystrokes after the first one.
+  const values = useFormStore((s) => s.values)
   const setValue = useFormStore((s) => s.setValue)
   // track which field is active for inline editing
   const [activeField, setActiveField] = useState<string | null>(null)
@@ -70,7 +74,8 @@ export default function FormFieldLayer({ page, pageIndex, scale, pageHeight }: P
     >
       {fields.map((f) => {
         const isActive = activeField === f.fieldName
-        const val = getValue(pageIndex, f.fieldName)
+        const val =
+          values.find((v) => v.pageIndex === pageIndex && v.fieldName === f.fieldName)?.value ?? ''
         return (
           <div
             key={f.fieldName}
