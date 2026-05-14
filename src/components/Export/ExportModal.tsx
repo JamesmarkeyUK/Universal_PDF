@@ -210,10 +210,10 @@ export default function ExportModal({ open, onClose }: Props) {
                 <button
                   onClick={() => download('original')}
                   disabled={!ready}
-                  className="px-4 py-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium text-left"
+                  className="px-4 py-3 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium text-left"
                 >
                   <div>⬇ Original</div>
-                  <div className="text-[11px] opacity-70 tabular-nums">
+                  <div className="text-[11px] opacity-90 tabular-nums">
                     {ready ? formatSize(origSize) : '…'}
                   </div>
                 </button>
@@ -221,7 +221,7 @@ export default function ExportModal({ open, onClose }: Props) {
                   onClick={() => download('compressed')}
                   disabled={!ready || !didShrink}
                   title={ready && !didShrink ? 'Already optimised — same size as Original' : undefined}
-                  className="px-4 py-3 bg-orange-600 hover:bg-orange-500 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium text-left"
+                  className="px-4 py-3 bg-orange-700 hover:bg-orange-600 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium text-left"
                 >
                   <div>⬇ Compressed</div>
                   <div className="text-[11px] opacity-90 tabular-nums">
