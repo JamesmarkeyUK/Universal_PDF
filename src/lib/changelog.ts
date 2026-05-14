@@ -8,6 +8,15 @@ export interface ChangelogEntry {
 // The first entry is the current version.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.3.0',
+    date: 'May 2026',
+    items: [
+      'Transform text into a PDF — paste Markdown (or plain text) and build a clean, multi-page document',
+      'Supports headings, lists, tables, code blocks, blockquotes, horizontal rules and clickable links',
+      'Drag a .md or .txt file straight into the transform panel'
+    ]
+  },
+  {
     version: '0.2.0',
     date: 'May 2026',
     items: [
