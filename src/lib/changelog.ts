@@ -8,6 +8,17 @@ export interface ChangelogEntry {
 // The first entry is the current version.
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.2.0',
+    date: 'May 2026',
+    items: [
+      'Stamp generator — design custom stamps or import an image, then place them like signatures',
+      'Single-line toolbar on desktop: editor controls merged into the header',
+      'Landing page reordered: Create → Open → Compress',
+      'Fixed resize and rotate handles on selected annotations',
+      'Version chip rotates colour with every release'
+    ]
+  },
+  {
     version: '0.1.0',
     date: 'May 2026',
     items: [
