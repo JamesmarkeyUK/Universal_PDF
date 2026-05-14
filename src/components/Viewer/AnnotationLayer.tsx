@@ -31,6 +31,18 @@ function getAnnotationIdFromTarget(target: Konva.Node | null): string | null {
   return null
 }
 
+// True if the click landed on Konva's Transformer (any anchor, rotation
+// knob, or its bounding-box border). Used to skip our pointerdown logic so
+// the Transformer can run the resize/rotate gesture unmolested.
+function isTransformerTarget(target: Konva.Node | null): boolean {
+  let node: Konva.Node | null = target
+  while (node) {
+    if (node.getClassName() === 'Transformer') return true
+    node = node.getParent()
+  }
+  return false
+}
+
 function getAnnotationBBox(a: Annotation): { x: number; y: number; width: number; height: number } {
   switch (a.type) {
     case 'text': {
@@ -180,6 +192,10 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
   function onPointerDown(e: Konva.KonvaEventObject<PointerEvent>) {
     if (editingId) return // ignore stage events while typing
     if (tool === 'hand') return // pan handled by PdfViewer
+    // Let Konva's Transformer own clicks on its anchors / rotate knob —
+    // don't deselect the annotation and tear down the Transformer before
+    // the resize / rotate gesture can begin.
+    if (isTransformerTarget(e.target)) return
     const stage = e.target.getStage()
     // If the click landed on an existing annotation, select it instead of
     // adding a new one — even when an annotation tool (tick/cross/etc.) is
