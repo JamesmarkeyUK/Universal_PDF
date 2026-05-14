@@ -129,58 +129,26 @@ export default function LandingPage() {
             </p>
 
             <div className="mt-7 bg-white border border-slate-200 rounded-2xl shadow-sm p-5 sm:p-6">
-              {/* Open existing */}
-              <button
-                type="button"
-                onClick={() => inputRef.current?.click()}
-                className="group relative w-full flex items-center gap-4 p-5 border-2 border-dashed border-orange-500 bg-orange-50/40 rounded-xl text-left hover:bg-orange-50 hover:border-orange-600 hover:shadow-lg hover:shadow-orange-500/10 transition-all"
-              >
-                <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-xl ring-4 ring-orange-500/0 group-hover:ring-orange-500/15 transition-all" />
-                <div className="shrink-0 w-12 h-12 rounded-lg bg-orange-600 text-white flex items-center justify-center text-2xl shadow-sm group-hover:scale-105 transition-transform">
-                  📄
-                </div>
-                <div className="min-w-0">
-                  <div className="font-semibold text-slate-900 text-base">Open a PDF</div>
-                  <div className="text-sm text-slate-600">Click to choose, or drop a file anywhere</div>
-                </div>
-                <span className="ml-auto text-orange-600 text-lg group-hover:translate-x-0.5 transition-transform" aria-hidden="true">
-                  →
-                </span>
-              </button>
-              <input
-                ref={inputRef}
-                type="file"
-                accept="application/pdf"
-                hidden
-                onChange={onFile}
-              />
-
-              {/* Divider */}
-              <div className="flex items-center gap-3 my-5">
-                <div className="flex-1 h-px bg-slate-200" />
-                <span className="text-xs uppercase tracking-wide text-slate-400 font-medium">or</span>
-                <div className="flex-1 h-px bg-slate-200" />
-              </div>
-
               {/* Create new — collapsed tile that expands on click */}
               <div>
                 <button
                   type="button"
                   onClick={() => setCreateOpen((v) => !v)}
                   aria-expanded={createOpen}
-                  className="group w-full flex items-center gap-4 p-4 border border-slate-200 rounded-xl text-left hover:border-orange-400 hover:bg-orange-50/40 transition-colors"
+                  className="group relative w-full flex items-center gap-4 p-5 border-2 border-dashed border-orange-500 bg-orange-50/40 rounded-xl text-left hover:bg-orange-50 hover:border-orange-600 hover:shadow-lg hover:shadow-orange-500/10 transition-all"
                 >
-                  <div className="shrink-0 w-12 h-12 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-2xl">
+                  <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-xl ring-4 ring-orange-500/0 group-hover:ring-orange-500/15 transition-all" />
+                  <div className="shrink-0 w-12 h-12 rounded-lg bg-orange-600 text-white flex items-center justify-center text-2xl shadow-sm group-hover:scale-105 transition-transform">
                     ＋
                   </div>
                   <div className="min-w-0">
-                    <div className="font-semibold text-slate-900">Create new</div>
-                    <div className="text-sm text-slate-500">
+                    <div className="font-semibold text-slate-900 text-base">Create a PDF</div>
+                    <div className="text-sm text-slate-600">
                       Blank A3, A4 or A5 — picks A4 by default
                     </div>
                   </div>
                   <span
-                    className={`ml-auto text-slate-400 group-hover:text-orange-600 transition-transform ${createOpen ? 'rotate-90' : ''}`}
+                    className={`ml-auto text-orange-600 text-lg group-hover:translate-x-0.5 transition-transform ${createOpen ? 'rotate-90' : ''}`}
                     aria-hidden="true"
                   >
                     →
@@ -245,6 +213,38 @@ export default function LandingPage() {
                   </div>
                 )}
               </div>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 my-5">
+                <div className="flex-1 h-px bg-slate-200" />
+                <span className="text-xs uppercase tracking-wide text-slate-400 font-medium">or</span>
+                <div className="flex-1 h-px bg-slate-200" />
+              </div>
+
+              {/* Open existing */}
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className="group w-full flex items-center gap-4 p-4 border border-slate-200 rounded-xl text-left hover:border-orange-400 hover:bg-orange-50/40 transition-colors"
+              >
+                <div className="shrink-0 w-12 h-12 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-2xl">
+                  📄
+                </div>
+                <div className="min-w-0">
+                  <div className="font-semibold text-slate-900">Open a PDF</div>
+                  <div className="text-sm text-slate-500">Click to choose, or drop a file anywhere</div>
+                </div>
+                <span className="ml-auto text-slate-400 group-hover:text-orange-600 transition-colors" aria-hidden="true">
+                  →
+                </span>
+              </button>
+              <input
+                ref={inputRef}
+                type="file"
+                accept="application/pdf"
+                hidden
+                onChange={onFile}
+              />
 
               {/* Divider */}
               <div className="flex items-center gap-3 my-5">
