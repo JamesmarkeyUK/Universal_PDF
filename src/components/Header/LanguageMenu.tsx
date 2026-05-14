@@ -93,15 +93,13 @@ export default function LanguageMenu() {
           </ul>
           {showOther && (
             <div className="px-3 py-3 border-t border-slate-100 text-xs text-slate-600 bg-slate-50">
-              Universal PDF currently ships with English. Other locales are
-              part of the Enterprise plan —{' '}
               <a
                 href="https://www.unisim.co.uk"
                 target="_blank"
                 rel="noreferrer"
                 className="text-orange-600 hover:underline font-medium"
               >
-                contact UNI SIM
+                Contact UNI SIM
               </a>{' '}
               to request a language.
             </div>
