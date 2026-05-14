@@ -18,6 +18,7 @@ import EnterpriseMenu from './components/Header/EnterpriseMenu'
 import FileNameEditor from './components/Header/FileNameEditor'
 import VersionChip from './components/Header/VersionChip'
 import FileMenu from './components/Toolbar/FileMenu'
+import MobileWelcomeToast from './components/Onboarding/MobileWelcomeToast'
 
 // Apply the saved language to <html lang> on first mount.
 import { persistLang, readSavedLang } from './lib/lang'
@@ -145,6 +146,7 @@ export default function App() {
       </header>
 
       {doc && <ToolbarMobile />}
+      {doc && <MobileWelcomeToast />}
 
       <main className="flex-1 min-h-0 pb-16 md:pb-0">
         {loading ? (
