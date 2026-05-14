@@ -3,8 +3,13 @@ import { usePdfStore } from '../../stores/pdfStore'
 import { useAnnotationStore } from '../../stores/annotationStore'
 import PdfPage from './PdfPage'
 
-const MIN_SCALE = 0.5
-const MAX_SCALE = 3
+// "100% zoom" in standard PDF viewers means physical paper size on screen.
+// CSS treats 1 inch as 96 px while a PDF point is 1/72 inch, so to render at
+// real-world size we need a base scale of 96/72.
+const BASE_SCALE = 96 / 72
+const MIN_ZOOM = 0.25
+const MAX_ZOOM = 4
+const ZOOM_STEP = 0.1
 
 export default function PdfViewer() {
   const doc = usePdfStore((s) => s.doc)
@@ -12,12 +17,13 @@ export default function PdfViewer() {
   const pageNavOpen = usePdfStore((s) => s.pageNavOpen)
   const togglePageNav = usePdfStore((s) => s.togglePageNav)
   const tool = useAnnotationStore((s) => s.tool)
-  const [scale, setScale] = useState(1.4)
+  const [zoom, setZoom] = useState(1)
+  const scale = zoom * BASE_SCALE
 
-  // Keep a ref to the current scale so the long-lived touch handlers below
+  // Keep a ref to the current zoom so the long-lived touch handlers below
   // can read it without re-binding on every change.
-  const scaleRef = useRef(scale)
-  scaleRef.current = scale
+  const zoomRef = useRef(zoom)
+  zoomRef.current = zoom
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -27,7 +33,7 @@ export default function PdfViewer() {
 
     interface Pinch {
       initialDist: number
-      initialScale: number
+      initialZoom: number
       relX: number
       relY: number
       initialScrollLeft: number
@@ -45,7 +51,7 @@ export default function PdfViewer() {
       const rect = el.getBoundingClientRect()
       pinch = {
         initialDist: dist(t1, t2),
-        initialScale: scaleRef.current,
+        initialZoom: zoomRef.current,
         relX: (t1.clientX + t2.clientX) / 2 - rect.left,
         relY: (t1.clientY + t2.clientY) / 2 - rect.top,
         initialScrollLeft: el.scrollLeft,
@@ -57,11 +63,11 @@ export default function PdfViewer() {
       if (!pinch || e.touches.length !== 2 || !el) return
       e.preventDefault()
       const [t1, t2] = [e.touches[0], e.touches[1]]
-      const newScale = Math.max(
-        MIN_SCALE,
-        Math.min(MAX_SCALE, pinch.initialScale * (dist(t1, t2) / pinch.initialDist))
+      const newZoom = Math.max(
+        MIN_ZOOM,
+        Math.min(MAX_ZOOM, pinch.initialZoom * (dist(t1, t2) / pinch.initialDist))
       )
-      const ratio = newScale / pinch.initialScale
+      const ratio = newZoom / pinch.initialZoom
       const rect = el.getBoundingClientRect()
       const currentRelX = (t1.clientX + t2.clientX) / 2 - rect.left
       const currentRelY = (t1.clientY + t2.clientY) / 2 - rect.top
@@ -69,7 +75,7 @@ export default function PdfViewer() {
       const newScrollLeft = (pinch.initialScrollLeft + pinch.relX) * ratio - currentRelX
       const newScrollTop = (pinch.initialScrollTop + pinch.relY) * ratio - currentRelY
 
-      setScale(newScale)
+      setZoom(newZoom)
       requestAnimationFrame(() => {
         if (!el) return
         el.scrollLeft = newScrollLeft
@@ -165,15 +171,21 @@ export default function PdfViewer() {
           )}
           <div className="ml-auto flex items-center gap-2">
             <button
-              onClick={() => setScale((s) => Math.max(MIN_SCALE, s - 0.2))}
+              onClick={() => setZoom((z) => Math.max(MIN_ZOOM, +(z - ZOOM_STEP).toFixed(2)))}
               className="w-7 h-7 rounded bg-white border border-slate-300 hover:bg-slate-50"
               aria-label="Zoom out"
             >
               −
             </button>
-            <span className="w-12 text-center tabular-nums">{Math.round(scale * 100)}%</span>
             <button
-              onClick={() => setScale((s) => Math.min(MAX_SCALE, s + 0.2))}
+              onClick={() => setZoom(1)}
+              title="Reset to 100% (actual size)"
+              className="w-14 text-center tabular-nums rounded hover:bg-white border border-transparent hover:border-slate-300"
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <button
+              onClick={() => setZoom((z) => Math.min(MAX_ZOOM, +(z + ZOOM_STEP).toFixed(2)))}
               className="w-7 h-7 rounded bg-white border border-slate-300 hover:bg-slate-50"
               aria-label="Zoom in"
             >

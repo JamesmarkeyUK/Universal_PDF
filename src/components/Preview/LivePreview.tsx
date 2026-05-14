@@ -99,7 +99,7 @@ export default function LivePreview() {
           <button
             onClick={onDownload}
             disabled={!bytes}
-            className="px-4 h-9 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
+            className="px-4 h-9 rounded bg-orange-600 hover:bg-orange-500 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
           >
             Download
           </button>

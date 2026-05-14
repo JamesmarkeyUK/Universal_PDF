@@ -434,7 +434,7 @@ export default function Toolbar() {
           <button
             onClick={() => setExportOpen(true)}
             disabled={!sourceBytes}
-            className="px-4 h-10 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
+            className="px-4 h-10 rounded bg-orange-600 hover:bg-orange-500 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
           >
             Export
           </button>
@@ -666,7 +666,7 @@ export default function Toolbar() {
         <button
           onClick={() => setExportOpen(true)}
           disabled={!sourceBytes}
-          className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-orange-400 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <span className="text-xl leading-none">⤓</span>
           <span className="text-[10px] font-medium">Save</span>

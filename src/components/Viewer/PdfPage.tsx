@@ -22,17 +22,24 @@ export default function PdfPage({ doc, pageIndex, scale }: Props) {
       const p = await doc.getPage(pageIndex + 1)
       if (cancelled) return
       setPage(p)
-      const viewport = p.getViewport({ scale })
+      // Use the logical viewport for sizing (CSS pixels) and a separate
+      // physical viewport for the canvas backing store so the bitmap stays
+      // crisp on high-DPI screens.
+      const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+      const cssViewport = p.getViewport({ scale })
+      const renderViewport = p.getViewport({ scale: scale * dpr })
       const canvas = canvasRef.current
       if (!canvas) return
       const ctx = canvas.getContext('2d')
       if (!ctx) return
 
-      canvas.width = viewport.width
-      canvas.height = viewport.height
-      setSize({ width: viewport.width, height: viewport.height })
+      canvas.width = renderViewport.width
+      canvas.height = renderViewport.height
+      canvas.style.width = `${cssViewport.width}px`
+      canvas.style.height = `${cssViewport.height}px`
+      setSize({ width: cssViewport.width, height: cssViewport.height })
 
-      renderTask = p.render({ canvasContext: ctx, viewport })
+      renderTask = p.render({ canvasContext: ctx, viewport: renderViewport })
       try {
         await renderTask.promise
       } catch {
