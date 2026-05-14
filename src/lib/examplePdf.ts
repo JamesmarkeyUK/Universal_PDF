@@ -62,8 +62,7 @@ export async function createExamplePdfFile(): Promise<File> {
   const form = pdf.getForm()
   function addField(name: string, label: string, fx: number, fy: number, fw: number) {
     page.drawText(label, { x: fx, y: fy + 22, size: 9, font: bold, color: SLATE_600 })
-    const field = form.createTextField(`example.${name}`)
-    field.setText('')
+    const field = form.createTextField(`example_${name}`)
     field.addToPage(page, {
       x: fx,
       y: fy,
@@ -115,8 +114,20 @@ export async function createExamplePdfFile(): Promise<File> {
   const badgeText = 'Verified: alex@example.com'
   const badgeW = bold.widthOfTextAtSize(badgeText, 8) + 26
   page.drawRectangle({ x: sigX + 12, y: badgeY, width: badgeW, height: 14, color: GREEN_50, borderColor: GREEN_600, borderWidth: 0.5 })
-  page.drawText('✓', { x: sigX + 17, y: badgeY + 3.5, size: 8, font: bold, color: GREEN_600 })
-  page.drawText(badgeText, { x: sigX + 27, y: badgeY + 3.5, size: 8, font: bold, color: GREEN_600 })
+  // Tick mark drawn as two short lines (avoids non-WinAnsi glyphs).
+  page.drawLine({
+    start: { x: sigX + 16, y: badgeY + 6 },
+    end: { x: sigX + 19, y: badgeY + 3.5 },
+    thickness: 1.2,
+    color: GREEN_600
+  })
+  page.drawLine({
+    start: { x: sigX + 19, y: badgeY + 3.5 },
+    end: { x: sigX + 24, y: badgeY + 10 },
+    thickness: 1.2,
+    color: GREEN_600
+  })
+  page.drawText(badgeText, { x: sigX + 28, y: badgeY + 3.5, size: 8, font: bold, color: GREEN_600 })
 
   // ---- Free-draw + shapes demo ----
   y = imgY - 30

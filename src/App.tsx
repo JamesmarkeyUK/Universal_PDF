@@ -109,10 +109,23 @@ export default function App() {
             draggable={false}
             className="pointer-events-none select-none absolute right-36 top-1/2 -translate-y-1/2 h-28 w-28 -rotate-12 opacity-30 mix-blend-screen drop-shadow-[0_1px_0_rgba(255,255,255,0.15)]"
           />
-          <div className="relative font-semibold tracking-tight">Universal PDF</div>
+          <button
+            type="button"
+            onClick={() => {
+              if (doc) usePdfStore.getState().reset()
+            }}
+            title="Universal PDF — home"
+            className="relative flex items-center gap-2 px-1 py-0.5 rounded hover:bg-white/5 transition-colors"
+          >
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-600 text-white text-[11px] font-bold">U</span>
+            <span className="font-semibold tracking-tight">Universal PDF</span>
+          </button>
           {fileName && <FileNameEditor />}
           <div className="relative ml-auto flex items-center gap-2">
-            <EnterpriseMenu />
+            <EnterpriseMenu
+              onAIOpen={() => setAiOpen(true)}
+              aiEnabled={!!doc}
+            />
             <button
               onClick={() => inputRef.current?.click()}
               className="bg-orange-600 hover:bg-orange-500 px-3 py-1.5 rounded text-sm font-medium"
@@ -130,7 +143,7 @@ export default function App() {
         </div>
       </header>
 
-      {doc && <Toolbar onAIOpen={() => setAiOpen(true)} />}
+      {doc && <Toolbar />}
 
       <main className="flex-1 min-h-0 pb-16 md:pb-0">
         {loading ? (

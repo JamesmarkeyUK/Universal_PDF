@@ -1,5 +1,6 @@
 export type Tool =
   | 'select'
+  | 'hand'
   | 'text'
   | 'draw'
   | 'rect'

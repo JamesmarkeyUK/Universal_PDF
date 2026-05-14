@@ -105,7 +105,7 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
 
   function onPointerDown(e: Konva.KonvaEventObject<PointerEvent>) {
     if (editingId) return // ignore stage events while typing
-    if (tool === 'select' || tool === 'form') {
+    if (tool === 'select' || tool === 'form' || tool === 'hand') {
       if (e.target === e.target.getStage()) setSelected(null)
       return
     }
@@ -299,8 +299,11 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
   }
 
   const selectable = tool === 'select'
-  const cursor = (tool === 'select' || tool === 'form') ? 'default' : 'crosshair'
-  const touchAction = (tool === 'select' || tool === 'form') ? 'pan-y pinch-zoom' : 'none'
+  const cursor =
+    tool === 'hand' ? 'grab' :
+    (tool === 'select' || tool === 'form') ? 'default' :
+    'crosshair'
+  const touchAction = (tool === 'select' || tool === 'form' || tool === 'hand') ? 'pan-y pinch-zoom' : 'none'
 
   return (
     <>
