@@ -200,16 +200,20 @@ export async function exportPdfWithAnnotations(
   downloadPdfBytes(bytes, outName)
 }
 
+export interface CompressResult {
+  bytes: Uint8Array
+  originalSize: number
+  compressedSize: number
+  fileName: string
+}
+
 export async function compressPdf(
   sourceBytes: ArrayBuffer,
   fileName: string
-): Promise<{ originalSize: number; compressedSize: number }> {
+): Promise<CompressResult> {
   const originalSize = sourceBytes.byteLength
   const pdf = await PDFDocument.load(sourceBytes)
-  // Save with object streams for better compression
   const bytes = await pdf.save({ useObjectStreams: true })
-  const compressedSize = bytes.byteLength
   const outName = fileName.replace(/\.pdf$/i, '') + '-compressed.pdf'
-  downloadPdfBytes(bytes, outName)
-  return { originalSize, compressedSize }
+  return { bytes, originalSize, compressedSize: bytes.byteLength, fileName: outName }
 }

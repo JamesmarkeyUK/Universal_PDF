@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PDFPageProxy } from '../../lib/pdfjs'
 import { useFormStore } from '../../stores/formStore'
-import { useAnnotationStore } from '../../stores/annotationStore'
 
 interface FieldInfo {
   fieldName: string
@@ -22,15 +21,12 @@ interface Props {
 }
 
 export default function FormFieldLayer({ page, pageIndex, scale, pageHeight }: Props) {
-  const tool = useAnnotationStore((s) => s.tool)
   const [fields, setFields] = useState<FieldInfo[]>([])
   const getValue = useFormStore((s) => s.getValue)
   const setValue = useFormStore((s) => s.setValue)
   // track which field is active for inline editing
   const [activeField, setActiveField] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-
-  const active = tool === 'form'
 
   useEffect(() => {
     let cancelled = false
@@ -65,7 +61,7 @@ export default function FormFieldLayer({ page, pageIndex, scale, pageHeight }: P
     }
   }, [activeField])
 
-  if (!active || fields.length === 0) return null
+  if (fields.length === 0) return null
 
   return (
     <div

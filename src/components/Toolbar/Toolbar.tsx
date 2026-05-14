@@ -2,9 +2,29 @@ import { useEffect, useRef, useState } from 'react'
 import { useAnnotationStore } from '../../stores/annotationStore'
 import { usePdfStore } from '../../stores/pdfStore'
 import { useFormStore } from '../../stores/formStore'
-import { exportPdfWithAnnotations, compressPdf } from '../../lib/export'
+import { exportPdfWithAnnotations, compressPdf, type CompressResult } from '../../lib/export'
 import SignatureMenu from '../Signature/SignatureMenu'
+import CompressResultModal from '../Compress/CompressResultModal'
 import type { Tool } from '../../types/annotations'
+
+const LONG_PRESS_MS = 450
+
+function PictureFrameIcon({ active = false, className = 'w-6 h-6' }: { active?: boolean; className?: string }) {
+  const frame = active ? '#fff' : '#fbbf24'
+  const sky = '#7dd3fc'
+  const ground = '#86efac'
+  const sun = '#fde047'
+  const mountain = '#94a3b8'
+  return (
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden="true">
+      <rect x="3" y="4" width="18" height="16" rx="2.5" fill={sky} stroke={frame} strokeWidth="1.6" />
+      <rect x="3" y="14" width="18" height="6" fill={ground} />
+      <circle cx="8.5" cy="9" r="1.8" fill={sun} />
+      <path d="M3 17 L9 11 L13 14 L18 9 L21 12 L21 20 L3 20 Z" fill={mountain} opacity="0.9" />
+      <rect x="3" y="4" width="18" height="16" rx="2.5" fill="none" stroke={frame} strokeWidth="1.6" />
+    </svg>
+  )
+}
 
 const COLORS = [
   { hex: '#000000', name: 'Black' },
@@ -55,7 +75,7 @@ export default function Toolbar({ onAIOpen }: Props) {
 
   const [exporting, setExporting] = useState(false)
   const [compressing, setCompressing] = useState(false)
-  const [compressResult, setCompressResult] = useState<{ orig: number; compressed: number } | null>(null)
+  const [compressResult, setCompressResult] = useState<CompressResult | null>(null)
 
   const imageInputRef = useRef<HTMLInputElement>(null)
 
@@ -73,6 +93,9 @@ export default function Toolbar({ onAIOpen }: Props) {
   const drawGroupRef = useRef<HTMLDivElement>(null)
   const colorGroupRef = useRef<HTMLDivElement>(null)
   const mobilePanelRef = useRef<HTMLDivElement>(null)
+
+  const pressTimer = useRef<number | null>(null)
+  const longPressed = useRef(false)
 
   function togglePanel(p: Panel) {
     setOpenPanel((prev) => (prev === p ? null : p))
@@ -123,7 +146,7 @@ export default function Toolbar({ onAIOpen }: Props) {
     try {
       const copy = sourceBytes.slice(0)
       const result = await compressPdf(copy, fileName)
-      setCompressResult({ orig: result.originalSize, compressed: result.compressedSize })
+      setCompressResult(result)
     } catch (e) {
       console.error(e)
       alert('Compression failed: ' + (e as Error).message)
@@ -163,12 +186,43 @@ export default function Toolbar({ onAIOpen }: Props) {
     )
   }
 
-  function toolBtn(id: Tool, icon: string, label: string, onClick?: () => void) {
+  function startLongPress(panel?: Panel) {
+    if (!panel) return
+    longPressed.current = false
+    if (pressTimer.current !== null) clearTimeout(pressTimer.current)
+    pressTimer.current = window.setTimeout(() => {
+      longPressed.current = true
+      setOpenPanel(panel)
+    }, LONG_PRESS_MS)
+  }
+  function endLongPress() {
+    if (pressTimer.current !== null) {
+      clearTimeout(pressTimer.current)
+      pressTimer.current = null
+    }
+  }
+  function handleToolClick(id: Tool, panel?: Panel) {
+    if (longPressed.current) {
+      longPressed.current = false
+      return
+    }
+    if (panel && tool === id) {
+      togglePanel(panel)
+    } else {
+      setTool(id)
+    }
+  }
+
+  function toolBtn(id: Tool, icon: string, label: string, panel?: Panel) {
     return (
       <button
         key={id}
-        onClick={onClick ?? (() => setTool(id))}
-        title={label}
+        onClick={() => handleToolClick(id, panel)}
+        onPointerDown={() => startLongPress(panel)}
+        onPointerUp={endLongPress}
+        onPointerLeave={endLongPress}
+        onPointerCancel={endLongPress}
+        title={panel ? `${label} — tap again or long-press for options` : label}
         className={`w-10 h-10 rounded flex items-center justify-center text-lg font-semibold transition-colors ${
           tool === id ? 'bg-orange-600' : 'hover:bg-slate-700'
         }`}
@@ -217,7 +271,8 @@ export default function Toolbar({ onAIOpen }: Props) {
 
   // --- DESKTOP TOOLBAR (top) -----------------------------------------------
   const desktop = (
-    <div className="hidden md:flex flex-wrap items-center gap-1 px-3 py-2 bg-slate-800 text-white border-b border-slate-700">
+    <div className="hidden md:block bg-slate-800 text-white border-b border-slate-700">
+      <div className="mx-auto w-full max-w-7xl flex flex-wrap items-center gap-1 px-4 py-2">
 
       {/* Select */}
       {toolBtn('select', '↖', 'Select / move')}
@@ -226,7 +281,7 @@ export default function Toolbar({ onAIOpen }: Props) {
 
       {/* Text + font-size expander */}
       <div ref={textGroupRef} className="relative flex items-start">
-        {toolBtn('text', 'T', 'Add text')}
+        {toolBtn('text', 'T', 'Add text', 'text')}
         <PlusBox panel="text" />
         {openPanel === 'text' && (
           <div className="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl px-3 py-2 flex items-center gap-3 whitespace-nowrap">
@@ -249,7 +304,7 @@ export default function Toolbar({ onAIOpen }: Props) {
 
       {/* Pencil + shapes + stroke expander */}
       <div ref={drawGroupRef} className="relative flex items-start">
-        {toolBtn('draw', '✎', 'Free draw', () => { setTool('draw') })}
+        {toolBtn('draw', '✎', 'Free draw', 'draw')}
         <PlusBox panel="draw" />
         {openPanel === 'draw' && (
           <div className="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl px-3 py-2 flex items-center gap-2 whitespace-nowrap">
@@ -285,11 +340,11 @@ export default function Toolbar({ onAIOpen }: Props) {
       {/* Image upload */}
       <label
         title="Upload and place an image"
-        className={`w-10 h-10 rounded flex items-center justify-center text-lg font-semibold transition-colors cursor-pointer ${
+        className={`w-10 h-10 rounded flex items-center justify-center transition-colors cursor-pointer ${
           tool === 'image' ? 'bg-orange-600' : 'hover:bg-slate-700'
         }`}
       >
-        🖼
+        <PictureFrameIcon active={tool === 'image'} />
         <input
           ref={imageInputRef}
           type="file"
@@ -298,9 +353,6 @@ export default function Toolbar({ onAIOpen }: Props) {
           onChange={handleImageUpload}
         />
       </label>
-
-      {/* Form fill */}
-      {toolBtn('form', '⌨', 'Fill form fields')}
 
       <div className="w-px h-6 bg-slate-700 mx-1" />
 
@@ -376,27 +428,14 @@ export default function Toolbar({ onAIOpen }: Props) {
         >
           Preview
         </button>
-        <div className="relative group">
-          <button
-            onClick={onCompress}
-            disabled={!sourceBytes || compressing}
-            className="px-3 h-10 rounded bg-slate-700 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm"
-            title="Reduce PDF file size"
-          >
-            {compressing ? 'Compressing…' : '⬇ Compress'}
-          </button>
-          {compressResult && (
-            <div className="absolute top-full right-0 mt-1 z-50 bg-slate-900 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-xl border border-slate-700">
-              <div>Original: {(compressResult.orig / 1024).toFixed(0)} KB</div>
-              <div>Compressed: {(compressResult.compressed / 1024).toFixed(0)} KB</div>
-              <div className="text-emerald-400 font-medium mt-0.5">
-                {compressResult.compressed < compressResult.orig
-                  ? `Saved ${(((compressResult.orig - compressResult.compressed) / compressResult.orig) * 100).toFixed(1)}%`
-                  : 'Already optimised'}
-              </div>
-            </div>
-          )}
-        </div>
+        <button
+          onClick={onCompress}
+          disabled={!sourceBytes || compressing}
+          className="px-3 h-10 rounded bg-slate-700 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-sm"
+          title="Reduce PDF file size"
+        >
+          {compressing ? 'Compressing…' : '⬇ Compress'}
+        </button>
         <button
           onClick={onExport}
           disabled={!sourceBytes || exporting}
@@ -404,6 +443,7 @@ export default function Toolbar({ onAIOpen }: Props) {
         >
           {exporting ? 'Exporting…' : 'Export'}
         </button>
+      </div>
       </div>
     </div>
   )
@@ -502,7 +542,11 @@ export default function Toolbar({ onAIOpen }: Props) {
     return (
       <div className="flex flex-col items-center justify-center flex-1 h-full relative">
         <button
-          onClick={() => setTool(id)}
+          onClick={() => handleToolClick(id, panel)}
+          onPointerDown={() => startLongPress(panel)}
+          onPointerUp={endLongPress}
+          onPointerLeave={endLongPress}
+          onPointerCancel={endLongPress}
           className={`flex flex-col items-center justify-center w-full h-full gap-0.5 rounded transition-colors ${
             active ? 'text-orange-400' : 'text-slate-200'
           }`}
@@ -600,7 +644,7 @@ export default function Toolbar({ onAIOpen }: Props) {
 
         {/* Image upload */}
         <label className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 cursor-pointer ${tool === 'image' ? 'text-orange-400' : 'text-slate-200'}`}>
-          <span className="text-xl leading-none">🖼</span>
+          <PictureFrameIcon active={tool === 'image'} className="w-6 h-6" />
           <span className="text-[10px] font-medium">Image</span>
           <input
             type="file"
@@ -613,15 +657,6 @@ export default function Toolbar({ onAIOpen }: Props) {
         <div className="flex-1 h-full flex items-stretch">
           <SignatureMenu openUpward compact />
         </div>
-
-        {/* Form fill */}
-        <button
-          onClick={() => setTool('form')}
-          className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 ${tool === 'form' ? 'text-orange-400' : 'text-slate-200'}`}
-        >
-          <span className="text-xl leading-none">⌨</span>
-          <span className="text-[10px] font-medium">Form</span>
-        </button>
 
         {/* AI */}
         <button
@@ -692,6 +727,12 @@ export default function Toolbar({ onAIOpen }: Props) {
     <>
       {desktop}
       {mobile}
+      {compressResult && (
+        <CompressResultModal
+          result={compressResult}
+          onClose={() => setCompressResult(null)}
+        />
+      )}
     </>
   )
 }

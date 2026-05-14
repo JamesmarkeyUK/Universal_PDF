@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { pdfjsLib, type PDFDocumentProxy } from '../lib/pdfjs'
-import { listRecents, saveRecent, getRecent, deleteRecent, type RecentMeta } from '../lib/recents'
+import { listRecents, saveRecent, getRecent, deleteRecent, renameRecent, type RecentMeta } from '../lib/recents'
 
 interface PdfState {
   doc: PDFDocumentProxy | null
@@ -19,6 +19,7 @@ interface PdfState {
   refreshRecents: () => Promise<void>
   openRecent: (id: string) => Promise<void>
   removeRecent: (id: string) => Promise<void>
+  renameFile: (newName: string) => Promise<void>
 }
 
 export const usePdfStore = create<PdfState>((set, get) => ({
@@ -76,5 +77,15 @@ export const usePdfStore = create<PdfState>((set, get) => ({
     // Optimistic update, then drop from IndexedDB.
     set((s) => ({ recents: s.recents.filter((r) => r.id !== id) }))
     await deleteRecent(id)
+  },
+  renameFile: async (newName) => {
+    const next = newName.trim()
+    if (!next) return
+    const cleaned = /\.pdf$/i.test(next) ? next : `${next}.pdf`
+    const current = get().fileName
+    if (!current || current === cleaned) return
+    set({ fileName: cleaned })
+    await renameRecent(current, cleaned)
+    await get().refreshRecents()
   }
 }))
