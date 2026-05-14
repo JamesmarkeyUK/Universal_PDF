@@ -1,0 +1,126 @@
+export default function PdfIllustration() {
+  return (
+    <div className="pdf-illu group relative w-full max-w-[480px] aspect-[5/6] select-none">
+      <svg
+        viewBox="0 0 500 600"
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-full h-full overflow-visible"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id="page-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="100%" stopColor="#f8fafc" />
+          </linearGradient>
+          <linearGradient id="img-grad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#fed7aa" />
+            <stop offset="100%" stopColor="#fb923c" />
+          </linearGradient>
+          <linearGradient id="bar-grad" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor="#ea580c" />
+            <stop offset="100%" stopColor="#fb923c" />
+          </linearGradient>
+          <filter id="page-shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="14" stdDeviation="18" floodColor="#0f172a" floodOpacity="0.18" />
+          </filter>
+          <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#0f172a" floodOpacity="0.15" />
+          </filter>
+        </defs>
+
+        {/* Back sheet (peeking) */}
+        <g className="pdf-back">
+          <rect x="80" y="58" width="360" height="500" rx="14" fill="#ffffff" opacity="0.7" filter="url(#page-shadow)" />
+        </g>
+
+        {/* Main page */}
+        <g className="pdf-page" style={{ transformOrigin: '250px 320px' }}>
+          <rect x="60" y="40" width="380" height="520" rx="16" fill="url(#page-grad)" stroke="#e2e8f0" strokeWidth="1" filter="url(#page-shadow)" />
+
+          {/* Header band */}
+          <rect x="60" y="40" width="380" height="56" rx="16" fill="#0f172a" />
+          <rect x="60" y="80" width="380" height="16" fill="#0f172a" />
+          <circle cx="92" cy="68" r="12" fill="#fb923c" />
+          <rect x="116" y="60" width="120" height="8" rx="3" fill="#fdba74" opacity="0.9" />
+          <rect x="116" y="74" width="80" height="6" rx="3" fill="#fb923c" opacity="0.7" />
+
+          {/* Title */}
+          <rect className="pdf-line line-1" x="84" y="120" width="220" height="14" rx="4" fill="#0f172a" />
+          <rect className="pdf-line line-2" x="84" y="146" width="160" height="8" rx="3" fill="#cbd5e1" />
+
+          {/* Text block */}
+          <g className="pdf-text">
+            <rect className="pdf-line line-3" x="84" y="178" width="332" height="6" rx="3" fill="#e2e8f0" />
+            <rect className="pdf-line line-4" x="84" y="194" width="316" height="6" rx="3" fill="#e2e8f0" />
+            <rect className="pdf-line line-5" x="84" y="210" width="290" height="6" rx="3" fill="#e2e8f0" />
+            <rect className="pdf-line line-6" x="84" y="226" width="260" height="6" rx="3" fill="#e2e8f0" />
+          </g>
+
+          {/* Image / chart card */}
+          <g className="pdf-image" filter="url(#soft-shadow)">
+            <rect x="84" y="256" width="332" height="150" rx="10" fill="url(#img-grad)" />
+            <circle cx="138" cy="296" r="20" fill="#ffffff" opacity="0.7" />
+            <path d="M84 376 L160 332 L210 360 L280 308 L340 348 L416 320 L416 406 L84 406 Z" fill="#ffffff" opacity="0.35" />
+            <path d="M84 376 L160 332 L210 360 L280 308 L340 348 L416 320" stroke="#ffffff" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+
+            {/* Mini bars on hover */}
+            <g className="pdf-bars">
+              <rect className="bar b1" x="106" y="380" width="14" height="18" rx="2" fill="url(#bar-grad)" />
+              <rect className="bar b2" x="146" y="370" width="14" height="28" rx="2" fill="url(#bar-grad)" />
+              <rect className="bar b3" x="186" y="360" width="14" height="38" rx="2" fill="url(#bar-grad)" />
+              <rect className="bar b4" x="226" y="350" width="14" height="48" rx="2" fill="url(#bar-grad)" />
+              <rect className="bar b5" x="266" y="340" width="14" height="58" rx="2" fill="url(#bar-grad)" />
+            </g>
+          </g>
+
+          {/* Caption lines */}
+          <rect className="pdf-line line-7" x="84" y="424" width="200" height="6" rx="3" fill="#e2e8f0" />
+          <rect className="pdf-line line-8" x="84" y="440" width="280" height="6" rx="3" fill="#e2e8f0" />
+          <rect className="pdf-line line-9" x="84" y="456" width="230" height="6" rx="3" fill="#e2e8f0" />
+
+          {/* Signature line */}
+          <line x1="84" y1="514" x2="260" y2="514" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="3 4" />
+          <text x="84" y="530" fontSize="9" fill="#94a3b8" fontFamily="ui-sans-serif, system-ui">Signature</text>
+
+          {/* Animated signature stroke */}
+          <path
+            className="pdf-signature"
+            d="M92 506 C 108 488, 122 522, 138 502 S 168 488, 184 506 S 214 520, 232 498 L 252 504"
+            fill="none"
+            stroke="#ea580c"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* Tick stamp */}
+          <g className="pdf-tick" style={{ transformOrigin: '380px 510px' }}>
+            <circle cx="380" cy="510" r="22" fill="#ecfdf5" stroke="#10b981" strokeWidth="2" />
+            <path d="M370 510 L378 518 L392 502" stroke="#10b981" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </g>
+        </g>
+
+        {/* Floating emoji-style reactions */}
+        <g className="pdf-reactions" aria-hidden="true">
+          <g className="react r1">
+            <circle cx="56" cy="160" r="18" fill="#ffffff" filter="url(#soft-shadow)" />
+            <text x="56" y="166" textAnchor="middle" fontSize="18">✏️</text>
+          </g>
+          <g className="react r2">
+            <circle cx="450" cy="240" r="18" fill="#ffffff" filter="url(#soft-shadow)" />
+            <text x="450" y="246" textAnchor="middle" fontSize="18">🖼️</text>
+          </g>
+          <g className="react r3">
+            <circle cx="64" cy="430" r="18" fill="#ffffff" filter="url(#soft-shadow)" />
+            <text x="64" y="436" textAnchor="middle" fontSize="18">✍️</text>
+          </g>
+        </g>
+
+        {/* Cursor */}
+        <g className="pdf-cursor" aria-hidden="true">
+          <path d="M0 0 L0 18 L5 14 L9 22 L12 21 L8 13 L14 13 Z" fill="#0f172a" stroke="#ffffff" strokeWidth="1" />
+        </g>
+      </svg>
+    </div>
+  )
+}
