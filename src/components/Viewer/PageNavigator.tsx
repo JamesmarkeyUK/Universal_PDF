@@ -65,8 +65,8 @@ export default function PageNavigator() {
       <aside
         className="fixed z-40 bg-white shadow-2xl overflow-y-auto
           left-0 right-0 bottom-16 max-h-[55vh] rounded-t-2xl border-t border-slate-200
-          md:left-auto md:right-0 md:top-[104px] md:bottom-0 md:w-56 md:max-h-none
-          md:rounded-none md:border-t-0 md:border-l md:border-slate-200"
+          md:right-auto md:left-0 md:top-[104px] md:bottom-0 md:w-56 md:max-h-none
+          md:rounded-none md:border-t-0 md:border-r md:border-slate-200"
       >
         <div className="sticky top-0 bg-white border-b border-slate-100 px-3 py-2 flex items-center justify-between">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
