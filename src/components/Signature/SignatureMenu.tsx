@@ -18,6 +18,7 @@ export default function SignatureMenu({ openUpward = false, compact = false }: S
   const activeId = useSignatureStore((s) => s.activeId)
   const setActive = useSignatureStore((s) => s.setActive)
   const openPad = useSignatureStore((s) => s.openPad)
+  const openImport = useSignatureStore((s) => s.openImport)
   const openStampPicker = useSignatureStore((s) => s.openStampPicker)
   const openEmailVerify = useSignatureStore((s) => s.openEmailVerify)
   const remove = useSignatureStore((s) => s.remove)
@@ -161,12 +162,20 @@ export default function SignatureMenu({ openUpward = false, compact = false }: S
           </div>
 
           {tab === 'signatures' ? (
-            <button
-              onClick={() => { openPad(); setOpen(false) }}
-              className="w-full px-3 py-2.5 text-sm font-medium text-orange-600 hover:bg-orange-50 border-t border-slate-100"
-            >
-              + Draw new signature
-            </button>
+            <div className="grid grid-cols-2 border-t border-slate-100">
+              <button
+                onClick={() => { openPad(); setOpen(false) }}
+                className="px-3 py-2.5 text-sm font-medium text-orange-600 hover:bg-orange-50"
+              >
+                + Draw new
+              </button>
+              <button
+                onClick={() => { openImport(); setOpen(false) }}
+                className="px-3 py-2.5 text-sm font-medium text-orange-600 hover:bg-orange-50 border-l border-slate-100"
+              >
+                + Import image
+              </button>
+            </div>
           ) : (
             <button
               onClick={() => { openStampPicker(); setOpen(false) }}

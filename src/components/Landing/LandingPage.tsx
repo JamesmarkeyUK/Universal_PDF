@@ -1,6 +1,9 @@
 import { useRef, useState } from 'react'
 import { usePdfStore } from '../../stores/pdfStore'
 import { createBlankPdfFile, type PageSize } from '../../lib/blank'
+import { createExamplePdfFile } from '../../lib/examplePdf'
+import { compressPdf, type CompressResult } from '../../lib/export'
+import CompressResultModal from '../Compress/CompressResultModal'
 import RecentFilesList from '../RecentFiles/RecentFilesList'
 import PdfIllustration from './PdfIllustration'
 
@@ -14,9 +17,32 @@ const SIZE_INFO: Record<PageSize, string> = {
 
 export default function LandingPage() {
   const inputRef = useRef<HTMLInputElement>(null)
+  const compressInputRef = useRef<HTMLInputElement>(null)
   const loadFile = usePdfStore((s) => s.loadFile)
   const [size, setSize] = useState<PageSize>('A4')
   const [creating, setCreating] = useState(false)
+  const [opening, setOpening] = useState(false)
+  const [compressing, setCompressing] = useState(false)
+  const [compressResult, setCompressResult] = useState<CompressResult | null>(null)
+  const [dragOverCompress, setDragOverCompress] = useState(false)
+
+  async function runCompress(file: File) {
+    if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
+      alert('Please choose a PDF file.')
+      return
+    }
+    setCompressing(true)
+    try {
+      const buf = await file.arrayBuffer()
+      const result = await compressPdf(buf, file.name)
+      setCompressResult(result)
+    } catch (err) {
+      console.error(err)
+      alert('Compression failed: ' + (err as Error).message)
+    } finally {
+      setCompressing(false)
+    }
+  }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -45,13 +71,47 @@ export default function LandingPage() {
     }
   }
 
+  async function openExample() {
+    if (opening) return
+    setOpening(true)
+    try {
+      const file = await createExamplePdfFile()
+      await loadFile(file)
+    } catch (err) {
+      console.error(err)
+      alert('Failed to open example')
+    } finally {
+      setOpening(false)
+    }
+  }
+
+  async function onCompressFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (file) await runCompress(file)
+  }
+
   return (
     <div className="h-full overflow-auto">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 lg:py-14">
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           {/* Left: animated PDF illustration */}
-          <div className="flex justify-center lg:justify-start order-2 lg:order-1">
+          <div className="flex flex-col items-center lg:items-start gap-4 order-2 lg:order-1">
             <PdfIllustration />
+            <button
+              type="button"
+              onClick={openExample}
+              disabled={opening}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white text-slate-900 border border-slate-200 shadow-sm hover:border-orange-400 hover:text-orange-700 hover:shadow transition-all disabled:opacity-60 disabled:cursor-wait"
+            >
+              <span aria-hidden="true">👁</span>
+              <span className="font-medium text-sm">
+                {opening ? 'Opening example…' : 'View PDF example'}
+              </span>
+              <span className="text-xs text-slate-400">
+                form · image · signature · annotations
+              </span>
+            </button>
           </div>
 
           {/* Right: open / create card */}
@@ -156,12 +216,83 @@ export default function LandingPage() {
                   )}
                 </button>
               </div>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 my-5">
+                <div className="flex-1 h-px bg-slate-200" />
+                <span className="text-xs uppercase tracking-wide text-slate-400 font-medium">or</span>
+                <div className="flex-1 h-px bg-slate-200" />
+              </div>
+
+              {/* Compress */}
+              <button
+                type="button"
+                onClick={() => compressInputRef.current?.click()}
+                disabled={compressing}
+                onDragEnter={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setDragOverCompress(true)
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  if (!dragOverCompress) setDragOverCompress(true)
+                }}
+                onDragLeave={(e) => {
+                  e.stopPropagation()
+                  setDragOverCompress(false)
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setDragOverCompress(false)
+                  const file = e.dataTransfer.files?.[0]
+                  if (file) runCompress(file)
+                }}
+                className={[
+                  'group w-full flex items-center gap-4 p-4 border rounded-xl text-left transition-colors disabled:opacity-60 disabled:cursor-wait',
+                  dragOverCompress
+                    ? 'border-amber-500 bg-amber-50 border-dashed border-2'
+                    : 'border-slate-200 hover:border-amber-400 hover:bg-amber-50/50'
+                ].join(' ')}
+              >
+                <div className="shrink-0 w-12 h-12 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-2xl">
+                  ⬇
+                </div>
+                <div className="min-w-0">
+                  <div className="font-semibold text-slate-900">
+                    {compressing ? 'Compressing…' : dragOverCompress ? 'Drop to compress' : 'Compress a PDF'}
+                  </div>
+                  <div className="text-sm text-slate-500">
+                    Drop a file or click — see original vs compressed
+                  </div>
+                </div>
+                <span className="ml-auto text-slate-400 group-hover:text-amber-700 transition-colors" aria-hidden="true">
+                  →
+                </span>
+              </button>
+              <input
+                ref={compressInputRef}
+                type="file"
+                accept="application/pdf"
+                hidden
+                onChange={onCompressFile}
+              />
             </div>
 
             <RecentFilesList />
           </div>
         </div>
       </div>
+
+      {compressResult && (
+        <CompressResultModal
+          result={compressResult}
+          onClose={() => setCompressResult(null)}
+          discardLabel="Discard"
+        />
+      )}
     </div>
   )
 }

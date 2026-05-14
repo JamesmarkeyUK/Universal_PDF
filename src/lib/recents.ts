@@ -105,6 +105,30 @@ export async function getRecent(id: string): Promise<ArrayBuffer | null> {
   }
 }
 
+export async function renameRecent(oldName: string, newName: string): Promise<void> {
+  if (!oldName || !newName || oldName === newName) return
+  try {
+    const db = await openDB()
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite')
+      const store = tx.objectStore(STORE)
+      const allReq = store.getAll()
+      allReq.onsuccess = () => {
+        const all = allReq.result as RecentFile[]
+        const entry = all.find((f) => f.name === oldName)
+        if (entry) {
+          store.put({ ...entry, name: newName })
+        }
+      }
+      allReq.onerror = () => reject(allReq.error)
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  } catch (e) {
+    console.warn('recents.renameRecent failed:', e)
+  }
+}
+
 export async function deleteRecent(id: string): Promise<void> {
   try {
     const db = await openDB()

@@ -5,9 +5,12 @@ import PageNavigator from './components/Viewer/PageNavigator'
 import SignaturePad from './components/Signature/SignaturePad'
 import StampPicker from './components/Signature/StampPicker'
 import EmailVerifyModal from './components/Signature/EmailVerifyModal'
+import SignatureImport from './components/Signature/SignatureImport'
 import AIToolsPanel from './components/AI/AIToolsPanel'
 import LandingPage from './components/Landing/LandingPage'
 import LivePreview from './components/Preview/LivePreview'
+import EnterpriseMenu from './components/Header/EnterpriseMenu'
+import FileNameEditor from './components/Header/FileNameEditor'
 import { usePdfStore } from './stores/pdfStore'
 import { useSignatureStore } from './stores/signatureStore'
 
@@ -107,10 +110,9 @@ export default function App() {
             className="pointer-events-none select-none absolute right-36 top-1/2 -translate-y-1/2 h-28 w-28 -rotate-12 opacity-30 mix-blend-screen drop-shadow-[0_1px_0_rgba(255,255,255,0.15)]"
           />
           <div className="relative font-semibold tracking-tight">Universal PDF</div>
-          {fileName && (
-            <span className="relative text-sm text-slate-300 truncate max-w-xs">{fileName}</span>
-          )}
+          {fileName && <FileNameEditor />}
           <div className="relative ml-auto flex items-center gap-2">
+            <EnterpriseMenu />
             <button
               onClick={() => inputRef.current?.click()}
               className="bg-orange-600 hover:bg-orange-500 px-3 py-1.5 rounded text-sm font-medium"
@@ -198,6 +200,7 @@ export default function App() {
 
       <PageNavigator />
       <SignaturePad />
+      <SignatureImport />
       {stampPickerOpen && <StampPicker />}
       {emailVerifyOpen && <EmailVerifyModal />}
       <AIToolsPanel open={aiOpen} onClose={() => setAiOpen(false)} />
