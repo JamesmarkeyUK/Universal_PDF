@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import Toolbar from './components/Toolbar/Toolbar'
+import {
+  ToolbarDesktopActions,
+  ToolbarDesktopTools,
+  ToolbarMobile,
+  useToolbarKeyboardShortcuts
+} from './components/Toolbar/Toolbar'
 import PdfViewer from './components/Viewer/PdfViewer'
 import PageNavigator from './components/Viewer/PageNavigator'
 import SignaturePad from './components/Signature/SignaturePad'
@@ -43,6 +48,8 @@ export default function App() {
   const emailVerifyOpen = useSignatureStore((s) => s.emailVerifyOpen)
 
   const [aiOpen, setAiOpen] = useState(false)
+
+  useToolbarKeyboardShortcuts(!!doc)
 
   useEffect(() => {
     refreshRecents()
@@ -122,11 +129,13 @@ export default function App() {
             </button>
             <VersionChip />
             <FileMenu variant="header" />
+            {doc && <ToolbarDesktopTools />}
           </div>
           <div className="flex justify-center min-w-0">
             {fileName && <FileNameEditor />}
           </div>
           <div className="flex items-center gap-2 justify-end">
+            {doc && <ToolbarDesktopActions />}
             <EnterpriseMenu
               onAIOpen={() => setAiOpen(true)}
               aiEnabled={!!doc}
@@ -135,7 +144,7 @@ export default function App() {
         </div>
       </header>
 
-      {doc && <Toolbar />}
+      {doc && <ToolbarMobile />}
 
       <main className="flex-1 min-h-0 pb-16 md:pb-0">
         {loading ? (

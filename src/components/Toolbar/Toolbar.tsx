@@ -56,58 +56,16 @@ const SELECT_OPTIONS: { id: Tool; icon: string; label: string; help: string }[] 
 // Module-level in-app clipboard for annotations (Ctrl+C/X/V)
 let clipboardAnnotation: Annotation | null = null
 
-export default function Toolbar() {
-  const tool = useAnnotationStore((s) => s.tool)
-  const color = useAnnotationStore((s) => s.color)
-  const strokeWidth = useAnnotationStore((s) => s.strokeWidth)
-  const annotations = useAnnotationStore((s) => s.annotations)
+// Shared keyboard shortcuts: Delete/Backspace, Ctrl+Z, Ctrl+C/X/V.
+// Mounted once at the App level whenever a PDF is loaded.
+export function useToolbarKeyboardShortcuts(enabled: boolean) {
   const selectedId = useAnnotationStore((s) => s.selectedId)
-  const setTool = useAnnotationStore((s) => s.setTool)
-  const setColor = useAnnotationStore((s) => s.setColor)
-  const setStrokeWidth = useAnnotationStore((s) => s.setStrokeWidth)
   const undo = useAnnotationStore((s) => s.undo)
   const remove = useAnnotationStore((s) => s.remove)
   const add = useAnnotationStore((s) => s.add)
-  const fontSize = useAnnotationStore((s) => s.fontSize)
-  const setFontSize = useAnnotationStore((s) => s.setFontSize)
-  const fontFamily = useAnnotationStore((s) => s.fontFamily)
-  const setFontFamily = useAnnotationStore((s) => s.setFontFamily)
-  const setUploadedImageSrc = useAnnotationStore((s) => s.setUploadedImageSrc)
-
-  const sourceBytes = usePdfStore((s) => s.sourceBytes)
-
-  const selectedAnnotation = annotations.find((a) => a.id === selectedId)
-  const textSelected = selectedAnnotation?.type === 'text'
-
-  const [openPanel, setOpenPanel] = useState<Panel>(null)
-  const [exportOpen, setExportOpen] = useState(false)
-
-  const selectGroupRef = useRef<HTMLDivElement>(null)
-  const textGroupRef = useRef<HTMLDivElement>(null)
-  const drawGroupRef = useRef<HTMLDivElement>(null)
-  const mobilePanelRef = useRef<HTMLDivElement>(null)
-  const imageInputRef = useRef<HTMLInputElement>(null)
-
-  const pressTimer = useRef<number | null>(null)
-  const longPressed = useRef(false)
-
-  function togglePanel(p: Panel) {
-    setOpenPanel((prev) => (prev === p ? null : p))
-  }
 
   useEffect(() => {
-    if (!openPanel) return
-    function onDoc(e: MouseEvent) {
-      const refs = [selectGroupRef, textGroupRef, drawGroupRef, mobilePanelRef]
-      const inside = refs.some((r) => r.current?.contains(e.target as Node))
-      if (!inside) setOpenPanel(null)
-    }
-    document.addEventListener('mousedown', onDoc)
-    return () => document.removeEventListener('mousedown', onDoc)
-  }, [openPanel])
-
-  // Keyboard shortcuts: Delete/Backspace, Ctrl+Z, Ctrl+C/X/V
-  useEffect(() => {
+    if (!enabled) return
     function isEditable(t: EventTarget | null): boolean {
       const el = t as HTMLElement | null
       if (!el) return false
@@ -146,7 +104,6 @@ export default function Toolbar() {
         if (!clipboardAnnotation) return
         const clone: Annotation = JSON.parse(JSON.stringify(clipboardAnnotation))
         clone.id = crypto.randomUUID()
-        // Offset paste by ~20px so the new copy is visible
         if ('x' in clone && 'y' in clone) {
           ;(clone as { x: number; y: number }).x = (clone as { x: number; y: number }).x + 20
           ;(clone as { x: number; y: number }).y = (clone as { x: number; y: number }).y + 20
@@ -167,7 +124,51 @@ export default function Toolbar() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selectedId, remove, undo, add])
+  }, [enabled, selectedId, remove, undo, add])
+}
+
+const isDrawShape = (t: Tool) => t === 'tick' || t === 'cross' || t === 'rect'
+
+// --- DESKTOP TOOLS (left, inline in header) -------------------------------
+export function ToolbarDesktopTools() {
+  const tool = useAnnotationStore((s) => s.tool)
+  const color = useAnnotationStore((s) => s.color)
+  const strokeWidth = useAnnotationStore((s) => s.strokeWidth)
+  const selectedId = useAnnotationStore((s) => s.selectedId)
+  const setTool = useAnnotationStore((s) => s.setTool)
+  const setColor = useAnnotationStore((s) => s.setColor)
+  const setStrokeWidth = useAnnotationStore((s) => s.setStrokeWidth)
+  const remove = useAnnotationStore((s) => s.remove)
+  const fontSize = useAnnotationStore((s) => s.fontSize)
+  const setFontSize = useAnnotationStore((s) => s.setFontSize)
+  const fontFamily = useAnnotationStore((s) => s.fontFamily)
+  const setFontFamily = useAnnotationStore((s) => s.setFontFamily)
+  const setUploadedImageSrc = useAnnotationStore((s) => s.setUploadedImageSrc)
+
+  const [openPanel, setOpenPanel] = useState<Panel>(null)
+
+  const selectGroupRef = useRef<HTMLDivElement>(null)
+  const textGroupRef = useRef<HTMLDivElement>(null)
+  const drawGroupRef = useRef<HTMLDivElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+
+  const pressTimer = useRef<number | null>(null)
+  const longPressed = useRef(false)
+
+  function togglePanel(p: Panel) {
+    setOpenPanel((prev) => (prev === p ? null : p))
+  }
+
+  useEffect(() => {
+    if (!openPanel) return
+    function onDoc(e: MouseEvent) {
+      const refs = [selectGroupRef, textGroupRef, drawGroupRef]
+      const inside = refs.some((r) => r.current?.contains(e.target as Node))
+      if (!inside) setOpenPanel(null)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [openPanel])
 
   function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -181,8 +182,6 @@ export default function Toolbar() {
     reader.readAsDataURL(file)
     e.target.value = ''
   }
-
-  const isDrawShape = (t: Tool) => t === 'tick' || t === 'cross' || t === 'rect'
 
   function PlusBox({ panel }: { panel: Panel }) {
     return (
@@ -237,7 +236,7 @@ export default function Toolbar() {
         onPointerLeave={endLongPress}
         onPointerCancel={endLongPress}
         title={panel ? `${label} — tap again or long-press for options` : label}
-        className={`w-10 h-10 rounded flex items-center justify-center text-lg font-semibold transition-colors ${
+        className={`w-9 h-9 rounded flex items-center justify-center text-lg font-semibold transition-colors ${
           tool === id ? 'bg-orange-600' : 'hover:bg-slate-700'
         }`}
       >
@@ -254,7 +253,7 @@ export default function Toolbar() {
         onClick={() => setColor(hex)}
         title={name}
         className={`rounded-full border-2 transition-transform flex-shrink-0 ${
-          small ? 'w-7 h-7' : 'w-8 h-8'
+          small ? 'w-6 h-6' : 'w-7 h-7'
         } ${active ? 'border-white scale-110' : 'border-slate-600 hover:scale-105'}`}
         style={{ backgroundColor: hex }}
       />
@@ -266,7 +265,7 @@ export default function Toolbar() {
     return (
       <label
         title="Custom colour"
-        className={`w-8 h-8 rounded-full cursor-pointer border-2 flex-shrink-0 overflow-hidden transition-transform ${
+        className={`w-7 h-7 rounded-full cursor-pointer border-2 flex-shrink-0 overflow-hidden transition-transform ${
           isCustom ? 'border-white scale-110' : 'border-slate-600 hover:scale-105'
         }`}
         style={{
@@ -283,169 +282,258 @@ export default function Toolbar() {
     )
   }
 
-  // --- DESKTOP TOOLBAR (top) -----------------------------------------------
-  const desktop = (
-    <div className="hidden md:block bg-slate-800 text-white border-b border-slate-700">
-      <div className="mx-auto w-full max-w-7xl flex flex-wrap items-center gap-1 px-4 py-2">
-        {/* Select / Hand with options panel */}
-        <div ref={selectGroupRef} className="relative flex items-start">
-          {toolBtn(
-            tool === 'hand' ? 'hand' : 'select',
-            tool === 'hand' ? '✋' : '↖',
-            tool === 'hand' ? 'Hand — drag to pan' : 'Select / move',
-            'select'
-          )}
-          <PlusBox panel="select" />
-          {openPanel === 'select' && (
-            <div className="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl py-1 whitespace-nowrap min-w-56">
-              {SELECT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() => { setTool(opt.id); setOpenPanel(null) }}
-                  className={`w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors ${
-                    tool === opt.id ? 'bg-orange-600 text-white' : 'hover:bg-slate-700 text-slate-100'
-                  }`}
-                >
-                  <span className="text-lg leading-none w-5 text-center">{opt.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium">{opt.label}</div>
-                    <div className="text-[11px] opacity-70">{opt.help}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+  return (
+    <div className="hidden md:flex items-center gap-1 text-white">
+      <div className="w-px h-6 bg-slate-700 mx-1" />
 
-        <div className="w-px h-6 bg-slate-700 mx-1" />
-
-        {/* Text + font-size expander */}
-        <div ref={textGroupRef} className="relative flex items-start">
-          {toolBtn('text', 'T', 'Add text', 'text')}
-          <PlusBox panel="text" />
-          {openPanel === 'text' && (
-            <div className="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl px-3 py-2 flex items-center gap-3 whitespace-nowrap">
-              <span className="text-xs text-slate-400">Size</span>
-              <input
-                type="range"
-                min={10}
-                max={48}
-                step={1}
-                value={fontSize}
-                onChange={(e) => setFontSize(parseInt(e.target.value, 10))}
-                className="w-28"
-              />
-              <span className="text-xs text-slate-300 w-9 tabular-nums text-right">{fontSize}px</span>
-              <div className="w-px h-6 bg-slate-600 mx-1" />
-              <span className="text-xs text-slate-400">Font</span>
-              {FONT_OPTIONS.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setFontFamily(f.id)}
-                  title={f.label}
-                  style={{ fontFamily: f.css }}
-                  className={`px-2 h-8 rounded text-sm transition-colors ${
-                    fontFamily === f.id ? 'bg-orange-600 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-100'
-                  }`}
-                >
-                  {f.preview}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="w-px h-6 bg-slate-700 mx-1" />
-
-        {/* Pencil + colours + combined options panel */}
-        <div ref={drawGroupRef} className="relative flex items-start gap-1">
-          {toolBtn('draw', '✎', 'Free draw', 'draw')}
-          <div className="flex items-center gap-1 self-center ml-1">
-            {colorSwatch('#000000', 'Black', true)}
-            {colorSwatch('#ffffff', 'White', true)}
-          </div>
-          <PlusBox panel="draw" />
-          {openPanel === 'draw' && (
-            <div className="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl px-3 py-2 flex items-center gap-2 whitespace-nowrap">
-              {DRAW_SHAPES.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => setTool(s.id)}
-                  title={s.label}
-                  className={`w-9 h-9 rounded flex items-center justify-center text-lg font-semibold transition-colors ${
-                    tool === s.id ? 'bg-orange-600' : 'hover:bg-slate-700'
-                  }`}
-                >
-                  {s.icon}
-                </button>
-              ))}
-              <div className="w-px h-6 bg-slate-600 mx-1" />
-              <span className="text-xs text-slate-400">Stroke</span>
-              <input
-                type="range"
-                min={1}
-                max={10}
-                step={0.5}
-                value={strokeWidth}
-                onChange={(e) => setStrokeWidth(parseFloat(e.target.value))}
-                className="w-20"
-              />
-              <span className="text-xs text-slate-300 w-12 tabular-nums text-right">{strokeWidth.toFixed(1)}px</span>
-              <div className="w-px h-6 bg-slate-600 mx-1" />
-              <span className="text-xs text-slate-400">Colour</span>
-              {COLORS.map((c) => colorSwatch(c.hex, c.name))}
-              <ColorPickerTrigger />
-            </div>
-          )}
-        </div>
-
-        <div className="w-px h-6 bg-slate-700 mx-1" />
-
-        {/* Image upload */}
-        <label
-          title="Upload and place an image"
-          className={`w-10 h-10 rounded flex items-center justify-center transition-colors cursor-pointer ${
-            tool === 'image' ? 'bg-orange-600' : 'hover:bg-slate-700'
-          }`}
-        >
-          <PictureFrameIcon active={tool === 'image'} />
-          <input
-            ref={imageInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
-            hidden
-            onChange={handleImageUpload}
-          />
-        </label>
-
-        {/* Delete (only when an annotation is selected) */}
-        {selectedId && (
-          <button
-            onClick={() => remove(selectedId)}
-            title="Delete selected (Del)"
-            className="ml-1 px-3 h-10 rounded bg-red-600 hover:bg-red-500 text-sm font-medium"
-          >
-            Delete
-          </button>
+      {/* Select / Hand with options panel */}
+      <div ref={selectGroupRef} className="relative flex items-start">
+        {toolBtn(
+          tool === 'hand' ? 'hand' : 'select',
+          tool === 'hand' ? '✋' : '↖',
+          tool === 'hand' ? 'Hand — drag to pan' : 'Select / move',
+          'select'
         )}
-
-        {/* Right-side actions */}
-        <div className="ml-auto flex items-center gap-2">
-          <SignatureMenu />
-
-          <button
-            onClick={() => setExportOpen(true)}
-            disabled={!sourceBytes}
-            className="px-4 h-10 rounded bg-orange-600 hover:bg-orange-500 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
-          >
-            Export
-          </button>
-        </div>
+        <PlusBox panel="select" />
+        {openPanel === 'select' && (
+          <div className="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl py-1 whitespace-nowrap min-w-56">
+            {SELECT_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => { setTool(opt.id); setOpenPanel(null) }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors ${
+                  tool === opt.id ? 'bg-orange-600 text-white' : 'hover:bg-slate-700 text-slate-100'
+                }`}
+              >
+                <span className="text-lg leading-none w-5 text-center">{opt.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium">{opt.label}</div>
+                  <div className="text-[11px] opacity-70">{opt.help}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
+      <div className="w-px h-6 bg-slate-700 mx-1" />
+
+      {/* Text + font-size expander */}
+      <div ref={textGroupRef} className="relative flex items-start">
+        {toolBtn('text', 'T', 'Add text', 'text')}
+        <PlusBox panel="text" />
+        {openPanel === 'text' && (
+          <div className="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl px-3 py-2 flex items-center gap-3 whitespace-nowrap">
+            <span className="text-xs text-slate-400">Size</span>
+            <input
+              type="range"
+              min={10}
+              max={48}
+              step={1}
+              value={fontSize}
+              onChange={(e) => setFontSize(parseInt(e.target.value, 10))}
+              className="w-28"
+            />
+            <span className="text-xs text-slate-300 w-9 tabular-nums text-right">{fontSize}px</span>
+            <div className="w-px h-6 bg-slate-600 mx-1" />
+            <span className="text-xs text-slate-400">Font</span>
+            {FONT_OPTIONS.map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFontFamily(f.id)}
+                title={f.label}
+                style={{ fontFamily: f.css }}
+                className={`px-2 h-8 rounded text-sm transition-colors ${
+                  fontFamily === f.id ? 'bg-orange-600 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-100'
+                }`}
+              >
+                {f.preview}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="w-px h-6 bg-slate-700 mx-1" />
+
+      {/* Pencil + colours + combined options panel */}
+      <div ref={drawGroupRef} className="relative flex items-start gap-1">
+        {toolBtn('draw', '✎', 'Free draw', 'draw')}
+        <div className="flex items-center gap-1 self-center ml-1">
+          {colorSwatch('#000000', 'Black', true)}
+          {colorSwatch('#ffffff', 'White', true)}
+        </div>
+        <PlusBox panel="draw" />
+        {openPanel === 'draw' && (
+          <div className="absolute top-full left-0 mt-1 z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl px-3 py-2 flex items-center gap-2 whitespace-nowrap">
+            {DRAW_SHAPES.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => setTool(s.id)}
+                title={s.label}
+                className={`w-9 h-9 rounded flex items-center justify-center text-lg font-semibold transition-colors ${
+                  tool === s.id ? 'bg-orange-600' : 'hover:bg-slate-700'
+                }`}
+              >
+                {s.icon}
+              </button>
+            ))}
+            <div className="w-px h-6 bg-slate-600 mx-1" />
+            <span className="text-xs text-slate-400">Stroke</span>
+            <input
+              type="range"
+              min={1}
+              max={10}
+              step={0.5}
+              value={strokeWidth}
+              onChange={(e) => setStrokeWidth(parseFloat(e.target.value))}
+              className="w-20"
+            />
+            <span className="text-xs text-slate-300 w-12 tabular-nums text-right">{strokeWidth.toFixed(1)}px</span>
+            <div className="w-px h-6 bg-slate-600 mx-1" />
+            <span className="text-xs text-slate-400">Colour</span>
+            {COLORS.map((c) => colorSwatch(c.hex, c.name))}
+            <ColorPickerTrigger />
+          </div>
+        )}
+      </div>
+
+      <div className="w-px h-6 bg-slate-700 mx-1" />
+
+      {/* Image upload */}
+      <label
+        title="Upload and place an image"
+        className={`w-9 h-9 rounded flex items-center justify-center transition-colors cursor-pointer ${
+          tool === 'image' ? 'bg-orange-600' : 'hover:bg-slate-700'
+        }`}
+      >
+        <PictureFrameIcon active={tool === 'image'} className="w-5 h-5" />
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          hidden
+          onChange={handleImageUpload}
+        />
+      </label>
+
+      {/* Delete (only when an annotation is selected) */}
+      {selectedId && (
+        <button
+          onClick={() => remove(selectedId)}
+          title="Delete selected (Del)"
+          className="ml-1 px-3 h-9 rounded bg-red-600 hover:bg-red-500 text-sm font-medium"
+        >
+          Delete
+        </button>
+      )}
     </div>
   )
+}
 
-  // --- MOBILE TOOLBAR (bottom, fixed) --------------------------------------
+// --- DESKTOP ACTIONS (right, inline in header) ----------------------------
+export function ToolbarDesktopActions() {
+  const sourceBytes = usePdfStore((s) => s.sourceBytes)
+  const [exportOpen, setExportOpen] = useState(false)
+
+  return (
+    <>
+      <div className="hidden md:flex items-center gap-2">
+        <SignatureMenu />
+        <button
+          onClick={() => setExportOpen(true)}
+          disabled={!sourceBytes}
+          className="px-4 h-9 rounded bg-orange-600 hover:bg-orange-500 disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
+        >
+          Export
+        </button>
+      </div>
+      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} />
+    </>
+  )
+}
+
+// --- MOBILE TOOLBAR (bottom, fixed) --------------------------------------
+export function ToolbarMobile() {
+  const tool = useAnnotationStore((s) => s.tool)
+  const color = useAnnotationStore((s) => s.color)
+  const strokeWidth = useAnnotationStore((s) => s.strokeWidth)
+  const annotations = useAnnotationStore((s) => s.annotations)
+  const selectedId = useAnnotationStore((s) => s.selectedId)
+  const setTool = useAnnotationStore((s) => s.setTool)
+  const setColor = useAnnotationStore((s) => s.setColor)
+  const setStrokeWidth = useAnnotationStore((s) => s.setStrokeWidth)
+  const undo = useAnnotationStore((s) => s.undo)
+  const remove = useAnnotationStore((s) => s.remove)
+  const fontSize = useAnnotationStore((s) => s.fontSize)
+  const setFontSize = useAnnotationStore((s) => s.setFontSize)
+  const setUploadedImageSrc = useAnnotationStore((s) => s.setUploadedImageSrc)
+
+  const sourceBytes = usePdfStore((s) => s.sourceBytes)
+
+  const selectedAnnotation = annotations.find((a) => a.id === selectedId)
+  const textSelected = selectedAnnotation?.type === 'text'
+
+  const [openPanel, setOpenPanel] = useState<Panel>(null)
+  const [exportOpen, setExportOpen] = useState(false)
+
+  const mobilePanelRef = useRef<HTMLDivElement>(null)
+
+  const pressTimer = useRef<number | null>(null)
+  const longPressed = useRef(false)
+
+  function togglePanel(p: Panel) {
+    setOpenPanel((prev) => (prev === p ? null : p))
+  }
+
+  useEffect(() => {
+    if (!openPanel) return
+    function onDoc(e: MouseEvent) {
+      if (!mobilePanelRef.current?.contains(e.target as Node)) setOpenPanel(null)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [openPanel])
+
+  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const src = ev.target?.result as string
+      setUploadedImageSrc(src)
+      setTool('image')
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  function startLongPress(panel?: Panel) {
+    if (!panel) return
+    longPressed.current = false
+    if (pressTimer.current !== null) clearTimeout(pressTimer.current)
+    pressTimer.current = window.setTimeout(() => {
+      longPressed.current = true
+      setOpenPanel(panel)
+    }, LONG_PRESS_MS)
+  }
+  function endLongPress() {
+    if (pressTimer.current !== null) {
+      clearTimeout(pressTimer.current)
+      pressTimer.current = null
+    }
+  }
+  function handleToolClick(id: Tool, panel?: Panel) {
+    if (longPressed.current) {
+      longPressed.current = false
+      return
+    }
+    if (panel && tool === id) {
+      togglePanel(panel)
+    } else {
+      setTool(id)
+    }
+  }
 
   const mobilePanelContent = (() => {
     if (openPanel === 'select') {
@@ -577,7 +665,7 @@ export default function Toolbar() {
     )
   }
 
-  const mobile = (
+  return (
     <div className="md:hidden">
       {/* Selection action bar */}
       {selectedId && openPanel === null && (
@@ -674,14 +762,28 @@ export default function Toolbar() {
           <span className="text-[10px] font-medium">Save</span>
         </button>
       </nav>
+
+      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} />
     </div>
   )
+}
 
+// Backward-compatible default export — renders both the desktop tools and
+// actions on a single bar plus the mobile toolbar. New layouts should
+// prefer the named exports so the desktop pieces can live inside the
+// app header.
+export default function Toolbar() {
   return (
     <>
-      {desktop}
-      {mobile}
-      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} />
+      <div className="hidden md:block bg-slate-800 text-white border-b border-slate-700">
+        <div className="mx-auto w-full max-w-7xl flex flex-wrap items-center gap-1 px-4 py-2">
+          <ToolbarDesktopTools />
+          <div className="ml-auto flex items-center gap-2">
+            <ToolbarDesktopActions />
+          </div>
+        </div>
+      </div>
+      <ToolbarMobile />
     </>
   )
 }
