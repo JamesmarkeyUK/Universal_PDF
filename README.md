@@ -6,7 +6,7 @@
 
 A clean Progressive Web App for viewing, annotating, and signing PDFs — works on Windows, macOS, iOS, and Android in any modern browser, with no upload to a server. Files stay on your device.
 
-**[Try the live app →](https://jamesmarkeyuk.github.io/universal-pdf/)**
+**[Try the live app →](https://jamesmarkeyuk.github.io/Universal_PDF/)**
 
 ## Features
 
@@ -20,7 +20,7 @@ A clean Progressive Web App for viewing, annotating, and signing PDFs — works 
 
 ## Install on your device
 
-Open the [app URL](https://jamesmarkeyuk.github.io/universal-pdf/), then:
+Open the [app URL](https://jamesmarkeyuk.github.io/Universal_PDF/), then:
 
 - **iOS Safari**: Share → *Add to Home Screen*
 - **Android Chrome**: menu → *Install app*
@@ -41,8 +41,8 @@ Signatures: tap *Sign → Draw new signature*, sign with mouse or finger, save. 
 Requires Node 22+ and npm.
 
 ```sh
-git clone https://github.com/JamesmarkeyUK/universal-pdf.git
-cd universal-pdf
+git clone https://github.com/JamesmarkeyUK/Universal_PDF.git
+cd Universal_PDF
 npm install
 npm run dev
 ```

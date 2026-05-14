@@ -3,9 +3,9 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// Deployed to GitHub Pages at https://<owner>.github.io/universal-pdf/.
+// Deployed to GitHub Pages at https://<owner>.github.io/Universal_PDF/.
 // Production assets need that base path; dev/preview serve from root.
-const PROD_BASE = '/universal-pdf/'
+const PROD_BASE = '/Universal_PDF/'
 
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? PROD_BASE : '/',
