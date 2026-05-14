@@ -22,6 +22,7 @@ export type TextAnnotation = Base & {
   color: string
   fontSize: number
   fontFamily?: FontFamily
+  rotation?: number
 }
 
 export type DrawAnnotation = Base & {
@@ -38,6 +39,7 @@ export type RectAnnotation = Base & {
   width: number
   height: number
   color: string
+  rotation?: number
 }
 
 export type MarkAnnotation = Base & {
@@ -46,6 +48,7 @@ export type MarkAnnotation = Base & {
   y: number
   size: number
   color: string
+  rotation?: number
 }
 
 export type ImageAnnotation = Base & {
@@ -55,6 +58,7 @@ export type ImageAnnotation = Base & {
   width: number
   height: number
   src: string
+  rotation?: number
 }
 
 export type Annotation =
