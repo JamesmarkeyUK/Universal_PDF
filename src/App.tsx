@@ -11,6 +11,7 @@ import LandingPage from './components/Landing/LandingPage'
 import LivePreview from './components/Preview/LivePreview'
 import EnterpriseMenu from './components/Header/EnterpriseMenu'
 import FileNameEditor from './components/Header/FileNameEditor'
+import LanguageMenu from './components/Header/LanguageMenu'
 import FileMenu from './components/Toolbar/FileMenu'
 import { usePdfStore } from './stores/pdfStore'
 import { useSignatureStore } from './stores/signatureStore'
@@ -102,25 +103,30 @@ export default function App() {
   return (
     <div className="flex flex-col h-full bg-slate-100">
       <header className="bg-slate-900 text-white">
-        <div className="relative mx-auto w-full max-w-7xl flex items-center gap-3 px-4 py-2">
-          <button
-            type="button"
-            onClick={() => {
-              if (doc) usePdfStore.getState().reset()
-            }}
-            title="Universal PDF — home"
-            className="relative flex items-center gap-2 px-1 py-0.5 rounded hover:bg-white/5 transition-colors"
-          >
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-600 text-white text-[11px] font-bold">U</span>
-            <span className="font-semibold tracking-tight">Universal PDF</span>
-          </button>
-          {fileName && <FileNameEditor />}
-          <div className="relative ml-auto flex items-center gap-2">
+        <div className="relative mx-auto w-full max-w-7xl grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (doc) usePdfStore.getState().reset()
+              }}
+              title="Universal PDF — home"
+              className="flex items-center gap-2 px-1 py-0.5 rounded hover:bg-white/5 transition-colors"
+            >
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-600 text-white text-[11px] font-bold">U</span>
+              <span className="font-semibold tracking-tight">Universal PDF</span>
+            </button>
             {doc && <FileMenu variant="header" />}
+          </div>
+          <div className="flex justify-center min-w-0">
+            {fileName && <FileNameEditor />}
+          </div>
+          <div className="flex items-center gap-2 justify-end">
             <EnterpriseMenu
               onAIOpen={() => setAiOpen(true)}
               aiEnabled={!!doc}
             />
+            <LanguageMenu />
             {!doc && (
               <button
                 onClick={() => inputRef.current?.click()}

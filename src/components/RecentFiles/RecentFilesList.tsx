@@ -14,6 +14,8 @@ function formatRelative(ms: number): string {
   return `${Math.floor(diff / 86_400_000)}d ago`
 }
 
+const RECENTS_LIMIT = 2
+
 export default function RecentFilesList() {
   const recents = usePdfStore((s) => s.recents)
   const openRecent = usePdfStore((s) => s.openRecent)
@@ -21,13 +23,21 @@ export default function RecentFilesList() {
 
   if (recents.length === 0) return null
 
+  const visible = recents.slice(0, RECENTS_LIMIT)
+  const extra = recents.length - visible.length
+
   return (
     <div className="mt-8 w-full max-w-md">
       <div className="text-xs uppercase text-slate-500 font-medium mb-2 px-1 tracking-wide">
         Recent
+        {extra > 0 && (
+          <span className="ml-2 normal-case text-slate-400 font-normal">
+            +{extra} more in File menu once you open one
+          </span>
+        )}
       </div>
       <div className="space-y-1">
-        {recents.map((r) => (
+        {visible.map((r) => (
           <div
             key={r.id}
             className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg overflow-hidden"

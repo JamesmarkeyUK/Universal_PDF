@@ -418,17 +418,19 @@ export default function Toolbar() {
           />
         </label>
 
+        {/* Delete (only when an annotation is selected) */}
+        {selectedId && (
+          <button
+            onClick={() => remove(selectedId)}
+            title="Delete selected (Del)"
+            className="ml-1 px-3 h-10 rounded bg-red-600 hover:bg-red-500 text-sm font-medium"
+          >
+            Delete
+          </button>
+        )}
+
         {/* Right-side actions */}
         <div className="ml-auto flex items-center gap-2">
-          {selectedId && (
-            <button
-              onClick={() => remove(selectedId)}
-              title="Delete selected (Del)"
-              className="px-3 h-10 rounded bg-red-600 hover:bg-red-500 text-sm font-medium"
-            >
-              Delete
-            </button>
-          )}
           <SignatureMenu />
 
           <button

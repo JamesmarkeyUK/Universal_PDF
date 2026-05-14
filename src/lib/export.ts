@@ -1,7 +1,17 @@
-import { PDFDocument, StandardFonts, LineCapStyle } from 'pdf-lib'
+import { PDFDocument, StandardFonts, LineCapStyle, degrees } from 'pdf-lib'
 import type { Annotation } from '../types/annotations'
 import type { FormFieldValue } from '../stores/formStore'
 import { hexToPdfRgb } from './colors'
+
+// Rotate (x, y) around (cx, cy) by `rad` radians.
+function rotatePoint(x: number, y: number, cx: number, cy: number, rad: number): [number, number] {
+  if (rad === 0) return [x, y]
+  const cos = Math.cos(rad)
+  const sin = Math.sin(rad)
+  const dx = x - cx
+  const dy = y - cy
+  return [cx + dx * cos - dy * sin, cy + dx * sin + dy * cos]
+}
 
 // Convert a polyline (flat [x0,y0,x1,y1,...]) to a sequence of cardinal-spline
 // Bezier segments matching Konva's `tension` smoothing on the screen overlay.
@@ -91,25 +101,41 @@ export async function buildAnnotatedPdfBytes(
     for (const a of items) {
       switch (a.type) {
         case 'text': {
-          const baselineY = a.y + a.fontSize * 0.8
+          const rot = a.rotation ?? 0
+          const rad = (rot * Math.PI) / 180
+          // Konva text top-left is (a.x, a.y); the baseline sits roughly
+          // 0.8 * fontSize below. pdf-lib draws from the baseline, so we
+          // rotate the baseline-left point around the Konva pivot (top-left)
+          // and use it as the pdf-lib origin with the inverse rotation
+          // (PDF Y-axis is flipped relative to Konva).
+          const blKx = a.x
+          const blKy = a.y + a.fontSize * 0.8
+          const [bx, by] = rotatePoint(blKx, blKy, a.x, a.y, rad)
           page.drawText(a.text, {
-            x: sx(a.x),
-            y: ph - baselineY / scale,
+            x: sx(bx),
+            y: ph - by / scale,
             size: a.fontSize / scale,
             font: pickFont(a.fontFamily),
-            color: hexToPdfRgb(a.color)
+            color: hexToPdfRgb(a.color),
+            rotate: rot ? degrees(-rot) : undefined
           })
           break
         }
         case 'rect': {
+          const rot = a.rotation ?? 0
+          const rad = (rot * Math.PI) / 180
+          // Konva top-left is (a.x, a.y); pdf-lib wants the bottom-left of
+          // the un-rotated rectangle in its own coordinate system.
+          const [bx, by] = rotatePoint(a.x, a.y + a.height, a.x, a.y, rad)
           page.drawRectangle({
-            x: sx(a.x),
-            y: ph - (a.y + a.height) / scale,
+            x: sx(bx),
+            y: ph - by / scale,
             width: sx(a.width),
             height: sx(a.height),
             borderColor: hexToPdfRgb(a.color),
             borderWidth: 2 / scale,
-            opacity: 0
+            opacity: 0,
+            rotate: rot ? degrees(-rot) : undefined
           })
           break
         }
@@ -128,14 +154,17 @@ export async function buildAnnotatedPdfBytes(
         }
         case 'tick': {
           const s = a.size
+          const rad = ((a.rotation ?? 0) * Math.PI) / 180
           const segs: Array<[number, number, number, number]> = [
             [a.x, a.y + s * 0.55, a.x + s * 0.35, a.y + s * 0.9],
             [a.x + s * 0.35, a.y + s * 0.9, a.x + s, a.y + s * 0.1]
           ]
           for (const [x1, y1, x2, y2] of segs) {
+            const [rx1, ry1] = rotatePoint(x1, y1, a.x, a.y, rad)
+            const [rx2, ry2] = rotatePoint(x2, y2, a.x, a.y, rad)
             page.drawLine({
-              start: { x: sx(x1), y: toY(y1) },
-              end: { x: sx(x2), y: toY(y2) },
+              start: { x: sx(rx1), y: toY(ry1) },
+              end: { x: sx(rx2), y: toY(ry2) },
               thickness: 3.5 / scale,
               color: hexToPdfRgb(a.color),
               lineCap: LineCapStyle.Round
@@ -145,14 +174,17 @@ export async function buildAnnotatedPdfBytes(
         }
         case 'cross': {
           const s = a.size
+          const rad = ((a.rotation ?? 0) * Math.PI) / 180
           const segs: Array<[number, number, number, number]> = [
             [a.x, a.y, a.x + s, a.y + s],
             [a.x + s, a.y, a.x, a.y + s]
           ]
           for (const [x1, y1, x2, y2] of segs) {
+            const [rx1, ry1] = rotatePoint(x1, y1, a.x, a.y, rad)
+            const [rx2, ry2] = rotatePoint(x2, y2, a.x, a.y, rad)
             page.drawLine({
-              start: { x: sx(x1), y: toY(y1) },
-              end: { x: sx(x2), y: toY(y2) },
+              start: { x: sx(rx1), y: toY(ry1) },
+              end: { x: sx(rx2), y: toY(ry2) },
               thickness: 3.5 / scale,
               color: hexToPdfRgb(a.color),
               lineCap: LineCapStyle.Round
@@ -161,15 +193,19 @@ export async function buildAnnotatedPdfBytes(
           break
         }
         case 'image': {
+          const rot = a.rotation ?? 0
+          const rad = (rot * Math.PI) / 180
           const isPng = a.src.startsWith('data:image/png')
           const img = isPng
             ? await pdf.embedPng(a.src)
             : await pdf.embedJpg(a.src)
+          const [bx, by] = rotatePoint(a.x, a.y + a.height, a.x, a.y, rad)
           page.drawImage(img, {
-            x: sx(a.x),
-            y: ph - (a.y + a.height) / scale,
+            x: sx(bx),
+            y: ph - by / scale,
             width: sx(a.width),
-            height: sx(a.height)
+            height: sx(a.height),
+            rotate: rot ? degrees(-rot) : undefined
           })
           break
         }

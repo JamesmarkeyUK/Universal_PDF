@@ -69,11 +69,17 @@ function isResizable(a: Annotation): boolean {
   return a.type === 'image' || a.type === 'rect'
 }
 
+function isTransformable(a: Annotation): boolean {
+  // Everything except free-draw works well with Konva's Transformer.
+  return a.type !== 'draw'
+}
+
 function SignatureImage({
   a,
   shapeRef,
   draggable,
   onClick,
+  onDragStart,
   onDragEnd,
   onTransformEnd
 }: {
@@ -81,6 +87,7 @@ function SignatureImage({
   shapeRef: (n: Konva.Node | null) => void
   draggable: boolean
   onClick: () => void
+  onDragStart: () => void
   onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => void
   onTransformEnd: (e: Konva.KonvaEventObject<Event>) => void
 }) {
@@ -93,11 +100,13 @@ function SignatureImage({
       image={img}
       x={a.x}
       y={a.y}
+      rotation={a.rotation ?? 0}
       width={a.width}
       height={a.height}
       draggable={draggable}
       onClick={onClick}
       onTap={onClick}
+      onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onTransformEnd={onTransformEnd}
     />
@@ -123,6 +132,7 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
   const drawingRef = useRef(false)
   const [currentLine, setCurrentLine] = useState<number[] | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [draggingId, setDraggingId] = useState<string | null>(null)
   const editingAnnotation = annotations.find(
     (a) => a.id === editingId && a.type === 'text'
   ) as TextAnnotation | undefined
@@ -134,7 +144,7 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
     const tr = trRef.current
     if (!tr) return
     const selected = annotations.find((a) => a.id === selectedId)
-    if (selected && isResizable(selected) && !editingId) {
+    if (selected && isTransformable(selected) && !editingId) {
       const node = shapeRefs.current.get(selected.id)
       if (node) {
         tr.nodes([node])
@@ -319,8 +329,13 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
     setSelected(a.id)
   }
 
+  function onShapeDragStart(a: Annotation) {
+    setDraggingId(a.id)
+  }
+
   function onShapeDragEnd(a: Annotation, e: Konva.KonvaEventObject<DragEvent>) {
     const node = e.target
+    setDraggingId(null)
     if (a.type === 'draw') {
       const dx = node.x()
       const dy = node.y()
@@ -334,6 +349,7 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
 
   function onShapeTransformEnd(a: Annotation, e: Konva.KonvaEventObject<Event>) {
     const node = e.target
+    const rotation = node.rotation()
     if (a.type === 'image' || a.type === 'rect') {
       const newWidth = Math.max(8, node.width() * node.scaleX())
       const newHeight = Math.max(8, node.height() * node.scaleY())
@@ -343,7 +359,14 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
         x: node.x(),
         y: node.y(),
         width: newWidth,
-        height: newHeight
+        height: newHeight,
+        rotation
+      } as Partial<Annotation>)
+    } else if (a.type === 'text' || a.type === 'tick' || a.type === 'cross') {
+      update(a.id, {
+        x: node.x(),
+        y: node.y(),
+        rotation
       } as Partial<Annotation>)
     }
   }
@@ -389,8 +412,11 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
               draggable: selectable,
               onClick: () => onShapeClick(a.id),
               onTap: () => onShapeClick(a.id),
+              onDragStart: () => onShapeDragStart(a),
               onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) =>
                 onShapeDragEnd(a, e),
+              onTransformEnd: (e: Konva.KonvaEventObject<Event>) =>
+                onShapeTransformEnd(a, e),
               ref: shapeRefSetter(a.id)
             }
 
@@ -418,6 +444,7 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
                     {...common}
                     x={a.x}
                     y={a.y}
+                    rotation={a.rotation ?? 0}
                     text={a.text}
                     fill={a.color}
                     fontSize={a.fontSize}
@@ -434,17 +461,17 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
                     {...common}
                     x={a.x}
                     y={a.y}
+                    rotation={a.rotation ?? 0}
                     width={a.width}
                     height={a.height}
                     stroke={a.color}
                     strokeWidth={2}
-                    onTransformEnd={(e) => onShapeTransformEnd(a, e)}
                   />
                 )
               case 'tick': {
                 const s = a.size
                 return (
-                  <Group key={a.id} {...common} x={a.x} y={a.y}>
+                  <Group key={a.id} {...common} x={a.x} y={a.y} rotation={a.rotation ?? 0}>
                     <Line
                       points={[0, s * 0.55, s * 0.35, s * 0.9, s, s * 0.1]}
                       stroke={a.color}
@@ -459,7 +486,7 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
               case 'cross': {
                 const s = a.size
                 return (
-                  <Group key={a.id} {...common} x={a.x} y={a.y}>
+                  <Group key={a.id} {...common} x={a.x} y={a.y} rotation={a.rotation ?? 0}>
                     <Line
                       points={[0, 0, s, s]}
                       stroke={a.color}
@@ -485,6 +512,7 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
                     shapeRef={shapeRefSetter(a.id)}
                     draggable={selectable}
                     onClick={() => onShapeClick(a.id)}
+                    onDragStart={() => onShapeDragStart(a)}
                     onDragEnd={(e) => onShapeDragEnd(a, e)}
                     onTransformEnd={(e) => onShapeTransformEnd(a, e)}
                   />
@@ -521,22 +549,39 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
             )
           })()}
 
-          <Transformer
-            ref={trRef}
-            rotateEnabled={false}
-            keepRatio={
-              annotations.find((a) => a.id === selectedId)?.type === 'image'
-            }
-            enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
-            boundBoxFunc={(_oldBox, newBox) => {
-              if (newBox.width < 12 || newBox.height < 12) return _oldBox
-              return newBox
-            }}
-          />
+          {(() => {
+            const selected = annotations.find((a) => a.id === selectedId)
+            const resizable = selected ? isResizable(selected) : false
+            return (
+              <Transformer
+                ref={trRef}
+                rotateEnabled
+                resizeEnabled={resizable}
+                keepRatio={selected?.type === 'image'}
+                rotateAnchorOffset={28}
+                enabledAnchors={resizable ? ['top-left', 'top-right', 'bottom-left', 'bottom-right'] : []}
+                borderStroke="#ea580c"
+                borderStrokeWidth={1.5}
+                borderDash={[6, 4]}
+                anchorStroke="#ea580c"
+                anchorFill="#ffffff"
+                anchorSize={9}
+                anchorCornerRadius={2}
+                boundBoxFunc={(_oldBox, newBox) => {
+                  if (newBox.width < 12 || newBox.height < 12) return _oldBox
+                  return newBox
+                }}
+              />
+            )
+          })()}
 
           {(() => {
             const selected = annotations.find((a) => a.id === selectedId)
-            if (!selected || isResizable(selected) || editingId) return null
+            // Only draw annotations still rely on the custom dashed halo
+            // (Konva's Transformer covers every other type). Skip while the
+            // user is moving the shape so the box doesn't lag behind.
+            if (!selected || selected.type !== 'draw' || editingId) return null
+            if (draggingId === selected.id) return null
             const bbox = getAnnotationBBox(selected)
             return (
               <Rect
