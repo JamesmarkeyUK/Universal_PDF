@@ -14,20 +14,26 @@ export default function FileMenu({ variant = 'toolbar' }: Props) {
 
   const doc = usePdfStore((s) => s.doc)
   const numPages = usePdfStore((s) => s.numPages)
+  const fileName = usePdfStore((s) => s.fileName)
   const pageNavOpen = usePdfStore((s) => s.pageNavOpen)
   const togglePageNav = usePdfStore((s) => s.togglePageNav)
   const loadFile = usePdfStore((s) => s.loadFile)
+  const renameFile = usePdfStore((s) => s.renameFile)
 
   const canUndo = annotations.length > 0
   const canClear = annotations.length > 0
   const canShowPages = !!doc && numPages > 1
+  const canRename = !!doc && !!fileName
 
   const [open, setOpen] = useState(false)
   const [langSubOpen, setLangSubOpen] = useState(false)
+  const [renameOpen, setRenameOpen] = useState(false)
+  const [renameDraft, setRenameDraft] = useState('')
   const [currentLang, setCurrentLang] = useState<LangCode>(readSavedLang())
   const [showOtherHint, setShowOtherHint] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const renameInputRef = useRef<HTMLInputElement>(null)
 
   const currentLangOpt = LANGS.find((l) => l.code === currentLang) ?? LANGS[0]
 
@@ -67,12 +73,15 @@ export default function FileMenu({ variant = 'toolbar' }: Props) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false)
         setLangSubOpen(false)
+        setRenameOpen(false)
         setShowOtherHint(false)
       }
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        if (langSubOpen) {
+        if (renameOpen) {
+          setRenameOpen(false)
+        } else if (langSubOpen) {
           setLangSubOpen(false)
           setShowOtherHint(false)
         } else {
@@ -86,7 +95,34 @@ export default function FileMenu({ variant = 'toolbar' }: Props) {
       document.removeEventListener('mousedown', onDoc)
       document.removeEventListener('keydown', onKey)
     }
-  }, [open, langSubOpen])
+  }, [open, langSubOpen, renameOpen])
+
+  useEffect(() => {
+    if (!renameOpen || !renameInputRef.current) return
+    const el = renameInputRef.current
+    el.focus()
+    const stem = /\.pdf$/i.test(renameDraft) ? renameDraft.length - 4 : renameDraft.length
+    el.setSelectionRange(0, stem)
+  }, [renameOpen, renameDraft])
+
+  function startRename() {
+    if (!fileName) return
+    setRenameDraft(fileName)
+    setLangSubOpen(false)
+    setShowOtherHint(false)
+    setRenameOpen(true)
+  }
+
+  function commitRename() {
+    const next = renameDraft.trim()
+    if (!next || next === fileName) {
+      setRenameOpen(false)
+      return
+    }
+    void renameFile(next)
+    setRenameOpen(false)
+    setOpen(false)
+  }
 
   return (
     <div className="relative" ref={ref}>
@@ -117,6 +153,60 @@ export default function FileMenu({ variant = 'toolbar' }: Props) {
             <span aria-hidden="true">📄</span>
             <span className="flex-1 text-left font-medium">{doc ? 'Open another PDF…' : 'Open PDF…'}</span>
           </button>
+
+          {canRename && !renameOpen && (
+            <button
+              onClick={startRename}
+              className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 text-sm border-t border-slate-100"
+            >
+              <span aria-hidden="true">✎</span>
+              <span className="flex-1 text-left truncate">Rename file…</span>
+              <span className="text-[11px] text-slate-400 truncate max-w-[120px]" title={fileName ?? ''}>
+                {fileName}
+              </span>
+            </button>
+          )}
+
+          {canRename && renameOpen && (
+            <div className="px-3 py-2.5 border-t border-slate-100 bg-slate-50/60">
+              <label className="block text-[11px] uppercase tracking-wide text-slate-500 font-medium mb-1">
+                Rename file
+              </label>
+              <input
+                ref={renameInputRef}
+                value={renameDraft}
+                onChange={(e) => setRenameDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    commitRename()
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault()
+                    setRenameOpen(false)
+                  }
+                }}
+                className="w-full px-2 py-1.5 text-sm rounded border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                aria-label="New file name"
+              />
+              <div className="mt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRenameOpen(false)}
+                  className="px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-200 rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={commitRename}
+                  disabled={!renameDraft.trim() || renameDraft.trim() === fileName}
+                  className="px-3 py-1 text-xs font-medium text-white bg-orange-600 hover:bg-orange-500 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          )}
 
           {canShowPages && (
             <button
