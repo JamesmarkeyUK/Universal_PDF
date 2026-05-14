@@ -13,6 +13,7 @@ type Item =
       href: string
       badge?: string
       highlight?: boolean
+      tinted?: boolean
     }
   | {
       key: string
@@ -23,6 +24,7 @@ type Item =
       action: 'ai' | 'soon'
       badge?: string
       highlight?: boolean
+      tinted?: boolean
     }
 
 interface Props {
@@ -58,13 +60,14 @@ export default function EnterpriseMenu({ onAIOpen, aiEnabled = true }: Props) {
   }, [open])
 
   const items: Item[] = [
-    { key: 'pro', label: 'Go PRO', description: 'Unlimited pages, priority support, no friction.', icon: '★', kind: 'link', href: UPSELL_URL, highlight: true },
     { key: 'self-host', label: 'Self host for FREE', description: 'Clone the repo and run it on your own server. MIT-licensed.', icon: '⌂', kind: 'link', href: REPO_URL, badge: 'Open source' },
-    { key: 'projects', label: 'Projects', description: 'Group PDFs into shared workspaces.', icon: '📁', kind: 'action', action: 'soon', badge: 'Soon' },
-    { key: 'team', label: 'Team Collaboration', description: 'Multi-user editing, comments and roles.', icon: '👥', kind: 'action', action: 'soon', badge: 'Soon' },
-    { key: 'branding', label: 'Your Branding', description: 'Logo, colour theme and custom domain.', icon: '🎨', kind: 'action', action: 'soon', badge: 'Soon' },
-    { key: 'fonts', label: 'Customised fonts', description: 'Upload your brand fonts and use them in any PDF.', icon: 'Aa', kind: 'action', action: 'soon', badge: 'Soon' },
-    { key: 'ai', label: 'AI Features', description: 'Smart summaries, redaction and auto-fill.', icon: '✦', kind: 'action', action: 'ai' }
+    { key: 'pro', label: 'Go PRO', description: 'Unlimited pages, priority support, no friction.', icon: '★', kind: 'link', href: UPSELL_URL, highlight: true },
+    { key: 'projects', label: 'Projects', description: 'Group PDFs into shared workspaces.', icon: '📁', kind: 'action', action: 'soon', badge: 'Soon', tinted: true },
+    { key: 'team', label: 'Team Collaboration', description: 'Multi-user editing, comments and roles.', icon: '👥', kind: 'action', action: 'soon', badge: 'Soon', tinted: true },
+    { key: 'branding', label: 'Your Branding', description: 'Logo, colour theme and custom domain.', icon: '🎨', kind: 'action', action: 'soon', badge: 'Soon', tinted: true },
+    { key: 'fonts', label: 'Customised fonts', description: 'Upload your brand fonts and use them in any PDF.', icon: 'Aa', kind: 'action', action: 'soon', badge: 'Soon', tinted: true },
+    { key: 'stamp-generator', label: 'Stamp generator', description: 'Design custom branded stamps in seconds.', icon: '🔖', kind: 'action', action: 'soon', badge: 'Soon', tinted: true },
+    { key: 'ai', label: 'AI Features', description: 'Smart summaries, redaction and auto-fill.', icon: '✦', kind: 'action', action: 'ai', tinted: true }
   ]
 
   function handleItem(item: Item) {
@@ -118,8 +121,8 @@ export default function EnterpriseMenu({ onAIOpen, aiEnabled = true }: Props) {
                     onClick={() => handleItem(item)}
                     disabled={aiDisabled}
                     className={[
-                      'w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
-                      item.highlight ? 'bg-orange-50/60' : ''
+                      'w-full flex items-start gap-3 px-4 py-3 text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+                      (item.highlight || item.tinted) ? 'bg-orange-50/60 hover:bg-orange-100/60' : 'hover:bg-slate-50'
                     ].join(' ')}
                   >
                     <span

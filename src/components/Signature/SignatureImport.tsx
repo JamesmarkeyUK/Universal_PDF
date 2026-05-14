@@ -4,8 +4,10 @@ import { importImageAsSignature, type ImportedSignature } from '../../lib/imageS
 
 export default function SignatureImport() {
   const open = useSignatureStore((s) => s.importOpen)
+  const importTarget = useSignatureStore((s) => s.importTarget)
   const closeImport = useSignatureStore((s) => s.closeImport)
   const add = useSignatureStore((s) => s.add)
+  const isStamp = importTarget === 'stamp'
 
   const [name, setName] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -38,7 +40,13 @@ export default function SignatureImport() {
         setName((current) => {
           if (current) return current
           const base = file.name.replace(/\.[^.]+$/, '').trim()
-          return base || `Signature ${useSignatureStore.getState().signatures.length + 1}`
+          if (base) return base
+          const list = useSignatureStore.getState().signatures
+          if (isStamp) {
+            const stampCount = list.filter((s) => s.name.endsWith(' Stamp')).length
+            return `Stamp ${stampCount + 1}`
+          }
+          return `Signature ${list.length + 1}`
         })
       })
       .catch((e: Error) => {
@@ -52,7 +60,7 @@ export default function SignatureImport() {
     return () => {
       cancelled = true
     }
-  }, [file, removeBg])
+  }, [file, removeBg, isStamp])
 
   if (!open) return null
 
@@ -70,8 +78,16 @@ export default function SignatureImport() {
 
   function save() {
     if (!preview) return
-    const finalName =
-      name.trim() || `Signature ${useSignatureStore.getState().signatures.length + 1}`
+    const list = useSignatureStore.getState().signatures
+    const trimmed = name.trim()
+    let finalName: string
+    if (isStamp) {
+      const stampCount = list.filter((s) => s.name.endsWith(' Stamp')).length
+      const base = trimmed || `Stamp ${stampCount + 1}`
+      finalName = base.endsWith(' Stamp') ? base : `${base} Stamp`
+    } else {
+      finalName = trimmed || `Signature ${list.length + 1}`
+    }
     add({
       name: finalName,
       dataUrl: preview.dataUrl,
@@ -93,7 +109,9 @@ export default function SignatureImport() {
     >
       <div className="bg-white rounded-lg shadow-2xl p-5 w-full max-w-lg">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-slate-900">Import signature</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {isStamp ? 'Import stamp' : 'Import signature'}
+          </h2>
           <button
             onClick={closeImport}
             className="text-slate-400 hover:text-slate-700 text-2xl leading-none w-8 h-8 flex items-center justify-center"

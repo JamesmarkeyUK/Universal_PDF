@@ -11,11 +11,14 @@ export interface Signature {
   verifiedEmail?: string
 }
 
+export type ImportTarget = 'signature' | 'stamp'
+
 interface SignatureState {
   signatures: Signature[]
   activeId: string | null
   padOpen: boolean
   importOpen: boolean
+  importTarget: ImportTarget
   stampPickerOpen: boolean
   emailVerifyOpen: boolean
   pendingVerifyId: string | null
@@ -26,7 +29,7 @@ interface SignatureState {
   setVerifiedEmail: (id: string, email: string) => void
   openPad: () => void
   closePad: () => void
-  openImport: () => void
+  openImport: (target?: ImportTarget) => void
   closeImport: () => void
   openStampPicker: () => void
   closeStampPicker: () => void
@@ -41,6 +44,7 @@ export const useSignatureStore = create<SignatureState>()(
       activeId: null,
       padOpen: false,
       importOpen: false,
+      importTarget: 'signature',
       stampPickerOpen: false,
       emailVerifyOpen: false,
       pendingVerifyId: null,
@@ -68,7 +72,7 @@ export const useSignatureStore = create<SignatureState>()(
         })),
       openPad: () => set({ padOpen: true }),
       closePad: () => set({ padOpen: false }),
-      openImport: () => set({ importOpen: true }),
+      openImport: (target = 'signature') => set({ importOpen: true, importTarget: target }),
       closeImport: () => set({ importOpen: false }),
       openStampPicker: () => set({ stampPickerOpen: true }),
       closeStampPicker: () => set({ stampPickerOpen: false }),
