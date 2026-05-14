@@ -13,7 +13,51 @@ import type Konva from 'konva'
 import { useAnnotationStore } from '../../stores/annotationStore'
 import { useSignatureStore } from '../../stores/signatureStore'
 import { useImage } from '../../lib/useImage'
-import type { Annotation, ImageAnnotation, TextAnnotation } from '../../types/annotations'
+import type { Annotation, FontFamily, ImageAnnotation, TextAnnotation } from '../../types/annotations'
+
+const FONT_STACK: Record<FontFamily, string> = {
+  sans: 'Helvetica, Arial, sans-serif',
+  serif: '"Times New Roman", Times, serif',
+  mono: '"Courier New", Courier, monospace'
+}
+
+function getAnnotationIdFromTarget(target: Konva.Node | null): string | null {
+  let node: Konva.Node | null = target
+  while (node) {
+    const id = node.id()
+    if (id) return id
+    node = node.getParent()
+  }
+  return null
+}
+
+function getAnnotationBBox(a: Annotation): { x: number; y: number; width: number; height: number } {
+  switch (a.type) {
+    case 'text': {
+      const w = Math.max(80, a.text.length * a.fontSize * 0.6 + 8)
+      return { x: a.x - 2, y: a.y - 2, width: w + 4, height: a.fontSize * 1.25 + 4 }
+    }
+    case 'rect':
+      return { x: a.x - 2, y: a.y - 2, width: a.width + 4, height: a.height + 4 }
+    case 'tick':
+    case 'cross':
+      return { x: a.x - 4, y: a.y - 4, width: a.size + 8, height: a.size + 8 }
+    case 'image':
+      return { x: a.x - 2, y: a.y - 2, width: a.width + 4, height: a.height + 4 }
+    case 'draw': {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+      for (let i = 0; i < a.points.length; i += 2) {
+        const x = a.points[i], y = a.points[i + 1]
+        if (x < minX) minX = x
+        if (y < minY) minY = y
+        if (x > maxX) maxX = x
+        if (y > maxY) maxY = y
+      }
+      const pad = (a.strokeWidth ?? 2) + 6
+      return { x: minX - pad, y: minY - pad, width: (maxX - minX) + pad * 2, height: (maxY - minY) + pad * 2 }
+    }
+  }
+}
 
 interface Props {
   pageIndex: number
@@ -45,6 +89,7 @@ function SignatureImage({
   return (
     <KonvaImage
       ref={shapeRef}
+      id={a.id}
       image={img}
       x={a.x}
       y={a.y}
@@ -64,12 +109,14 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
   const color = useAnnotationStore((s) => s.color)
   const strokeWidth = useAnnotationStore((s) => s.strokeWidth)
   const fontSize = useAnnotationStore((s) => s.fontSize)
+  const fontFamily = useAnnotationStore((s) => s.fontFamily)
   const allAnnotations = useAnnotationStore((s) => s.annotations)
   const selectedId = useAnnotationStore((s) => s.selectedId)
   const add = useAnnotationStore((s) => s.add)
   const update = useAnnotationStore((s) => s.update)
   const remove = useAnnotationStore((s) => s.remove)
   const setSelected = useAnnotationStore((s) => s.setSelected)
+  const setTool = useAnnotationStore((s) => s.setTool)
 
   const annotations = allAnnotations.filter((a) => a.pageIndex === pageIndex)
 
@@ -105,8 +152,21 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
 
   function onPointerDown(e: Konva.KonvaEventObject<PointerEvent>) {
     if (editingId) return // ignore stage events while typing
-    if (tool === 'select' || tool === 'form' || tool === 'hand') {
-      if (e.target === e.target.getStage()) setSelected(null)
+    if (tool === 'hand') return // pan handled by PdfViewer
+    const stage = e.target.getStage()
+    // If the click landed on an existing annotation, select it instead of
+    // adding a new one — even when an annotation tool (tick/cross/etc.) is
+    // active. Empty stage clicks fall through to the add/select logic below.
+    if (e.target !== stage) {
+      const hitId = getAnnotationIdFromTarget(e.target)
+      if (hitId) {
+        setSelected(hitId)
+        if (tool !== 'select') setTool('select')
+        return
+      }
+    }
+    if (tool === 'select' || tool === 'form') {
+      setSelected(null)
       return
     }
     const pos = getPos(e)
@@ -123,7 +183,8 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
         y: pos.y,
         text: '',
         color,
-        fontSize
+        fontSize,
+        fontFamily
       })
       setEditingId(id)
     } else if (tool === 'tick' || tool === 'cross') {
@@ -324,6 +385,7 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
         <Layer>
           {annotations.map((a) => {
             const common = {
+              id: a.id,
               draggable: selectable,
               onClick: () => onShapeClick(a.id),
               onTap: () => onShapeClick(a.id),
@@ -359,6 +421,7 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
                     text={a.text}
                     fill={a.color}
                     fontSize={a.fontSize}
+                    fontFamily={FONT_STACK[a.fontFamily ?? 'sans']}
                     visible={a.id !== editingId}
                     onDblClick={() => onTextDblClick(a)}
                     onDblTap={() => onTextDblClick(a)}
@@ -470,6 +533,25 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
               return newBox
             }}
           />
+
+          {(() => {
+            const selected = annotations.find((a) => a.id === selectedId)
+            if (!selected || isResizable(selected) || editingId) return null
+            const bbox = getAnnotationBBox(selected)
+            return (
+              <Rect
+                listening={false}
+                x={bbox.x}
+                y={bbox.y}
+                width={bbox.width}
+                height={bbox.height}
+                stroke="#ea580c"
+                strokeWidth={1.5}
+                dash={[6, 4]}
+                cornerRadius={4}
+              />
+            )
+          })()}
         </Layer>
       </Stage>
 

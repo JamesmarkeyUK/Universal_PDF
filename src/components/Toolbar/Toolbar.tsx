@@ -3,8 +3,13 @@ import { useAnnotationStore } from '../../stores/annotationStore'
 import { usePdfStore } from '../../stores/pdfStore'
 import SignatureMenu from '../Signature/SignatureMenu'
 import ExportModal from '../Export/ExportModal'
-import FileMenu from './FileMenu'
-import type { Annotation, Tool } from '../../types/annotations'
+import type { Annotation, FontFamily, Tool } from '../../types/annotations'
+
+const FONT_OPTIONS: { id: FontFamily; label: string; preview: string; css: string }[] = [
+  { id: 'sans', label: 'Sans', preview: 'Aa', css: 'Helvetica, Arial, sans-serif' },
+  { id: 'serif', label: 'Serif', preview: 'Aa', css: '"Times New Roman", Times, serif' },
+  { id: 'mono', label: 'Mono', preview: 'Aa', css: '"Courier New", Courier, monospace' }
+]
 
 const LONG_PRESS_MS = 450
 
@@ -61,11 +66,12 @@ export default function Toolbar() {
   const setColor = useAnnotationStore((s) => s.setColor)
   const setStrokeWidth = useAnnotationStore((s) => s.setStrokeWidth)
   const undo = useAnnotationStore((s) => s.undo)
-  const clearAll = useAnnotationStore((s) => s.clearAll)
   const remove = useAnnotationStore((s) => s.remove)
   const add = useAnnotationStore((s) => s.add)
   const fontSize = useAnnotationStore((s) => s.fontSize)
   const setFontSize = useAnnotationStore((s) => s.setFontSize)
+  const fontFamily = useAnnotationStore((s) => s.fontFamily)
+  const setFontFamily = useAnnotationStore((s) => s.setFontFamily)
   const setUploadedImageSrc = useAnnotationStore((s) => s.setUploadedImageSrc)
 
   const sourceBytes = usePdfStore((s) => s.sourceBytes)
@@ -330,6 +336,21 @@ export default function Toolbar() {
                 className="w-28"
               />
               <span className="text-xs text-slate-300 w-9 tabular-nums text-right">{fontSize}px</span>
+              <div className="w-px h-6 bg-slate-600 mx-1" />
+              <span className="text-xs text-slate-400">Font</span>
+              {FONT_OPTIONS.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setFontFamily(f.id)}
+                  title={f.label}
+                  style={{ fontFamily: f.css }}
+                  className={`px-2 h-8 rounded text-sm transition-colors ${
+                    fontFamily === f.id ? 'bg-orange-600 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-100'
+                  }`}
+                >
+                  {f.preview}
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -369,6 +390,7 @@ export default function Toolbar() {
                 onChange={(e) => setStrokeWidth(parseFloat(e.target.value))}
                 className="w-20"
               />
+              <span className="text-xs text-slate-300 w-12 tabular-nums text-right">{strokeWidth.toFixed(1)}px</span>
               <div className="w-px h-6 bg-slate-600 mx-1" />
               <span className="text-xs text-slate-400">Colour</span>
               {COLORS.map((c) => colorSwatch(c.hex, c.name))}
@@ -408,13 +430,6 @@ export default function Toolbar() {
             </button>
           )}
           <SignatureMenu />
-
-          <FileMenu
-            onUndo={undo}
-            onClear={clearAll}
-            canUndo={annotations.length > 0}
-            canClear={annotations.length > 0}
-          />
 
           <button
             onClick={() => setExportOpen(true)}
@@ -496,6 +511,7 @@ export default function Toolbar() {
             onChange={(e) => setStrokeWidth(parseFloat(e.target.value))}
             className="w-20"
           />
+          <span className="text-xs text-slate-700 tabular-nums w-10 text-right">{strokeWidth.toFixed(1)}px</span>
           <div className="w-px h-7 bg-slate-200 mx-1" />
           {COLORS.map((c) => (
             <button

@@ -219,15 +219,17 @@ export default function ExportModal({ open, onClose }: Props) {
                 </button>
                 <button
                   onClick={() => download('compressed')}
-                  disabled={!ready}
-                  className="px-4 py-3 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium text-left"
+                  disabled={!ready || !didShrink}
+                  title={ready && !didShrink ? 'Already optimised — same size as Original' : undefined}
+                  className="px-4 py-3 bg-orange-600 hover:bg-orange-500 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium text-left"
                 >
                   <div>⬇ Compressed</div>
                   <div className="text-[11px] opacity-90 tabular-nums">
-                    {ready ? formatSize(compSize) : '…'}
-                    {ready && didShrink && (
-                      <span className="ml-1">· −{pct.toFixed(0)}%</span>
-                    )}
+                    {!ready
+                      ? '…'
+                      : didShrink
+                        ? `${formatSize(compSize)} · −${pct.toFixed(0)}%`
+                        : 'No further savings'}
                   </div>
                 </button>
               </div>
