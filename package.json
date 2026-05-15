@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "license": "MIT",
-  "description": "Free and open source PDF viewer + editor. Simple and easy to use.",
+  "description": "Universal PDFs that just work. Free and open source PDF viewer + editor.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
