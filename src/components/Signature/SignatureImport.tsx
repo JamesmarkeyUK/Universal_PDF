@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSignatureStore } from '../../stores/signatureStore'
+import { useAnnotationStore } from '../../stores/annotationStore'
 import { importImageAsSignature, type ImportedSignature } from '../../lib/imageSignature'
 
 export default function SignatureImport() {
@@ -95,6 +96,9 @@ export default function SignatureImport() {
       height: preview.height
     })
     closeImport()
+    // Arm the signature tool so the user can immediately drop the new
+    // signature — the active signature was set by add() above.
+    useAnnotationStore.getState().setTool('signature')
   }
 
   const previewBg =

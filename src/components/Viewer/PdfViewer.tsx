@@ -145,6 +145,54 @@ export default function PdfViewer() {
     }
   }, [tool])
 
+  // Publish the rendered document width and the document scroll-container's
+  // scrollbar width as CSS custom properties so the top toolbar and the
+  // pages/zoom strip can line up with the document edges. The document is
+  // centered inside the scroll container (which loses width to its vertical
+  // scrollbar), so each bar's mx-auto wrapper applies a padding-right of
+  // --doc-scrollbar-width to make the centering box match.
+  useEffect(() => {
+    if (!doc) return
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const scrollEl = scrollRef.current
+
+    function updateScrollbar() {
+      if (!scrollEl) return
+      // Defer slightly so the browser finishes any reflow that adds/removes
+      // the scrollbar before we read clientWidth.
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        if (!scrollEl || cancelled) return
+        const sb = scrollEl.offsetWidth - scrollEl.clientWidth
+        document.documentElement.style.setProperty('--doc-scrollbar-width', `${sb}px`)
+      }, 0)
+    }
+
+    doc.getPage(1).then((page) => {
+      if (cancelled) return
+      const { width } = page.getViewport({ scale })
+      document.documentElement.style.setProperty('--doc-display-width', `${width}px`)
+      updateScrollbar()
+    }).catch(() => {})
+
+    updateScrollbar()
+    const ro = scrollEl ? new ResizeObserver(updateScrollbar) : null
+    if (scrollEl && ro) {
+      ro.observe(scrollEl)
+      const inner = scrollEl.firstElementChild
+      if (inner) ro.observe(inner)
+    }
+
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+      ro?.disconnect()
+      document.documentElement.style.removeProperty('--doc-display-width')
+      document.documentElement.style.removeProperty('--doc-scrollbar-width')
+    }
+  }, [doc, scale])
+
   if (!doc) return null
 
   const handCursor = tool === 'hand' ? 'grab' : undefined
@@ -152,7 +200,11 @@ export default function PdfViewer() {
   return (
     <div className="flex flex-col h-full">
       <div className="bg-slate-100 border-b border-slate-200">
-        <div className="mx-auto w-full max-w-7xl grid grid-cols-[auto_1fr_auto] items-center gap-2 px-4 py-1.5 text-sm text-slate-600">
+        <div style={{ paddingRight: 'var(--doc-scrollbar-width, 0px)' }}>
+        <div
+          className="mx-auto w-full grid grid-cols-[auto_1fr_auto] items-center gap-2 py-1.5 text-sm text-slate-600"
+          style={{ maxWidth: 'clamp(600px, var(--doc-display-width, 80rem), 80rem)' }}
+        >
           <div className="flex items-center">
             {numPages > 1 ? (
               <button
@@ -198,6 +250,7 @@ export default function PdfViewer() {
               +
             </button>
           </div>
+        </div>
         </div>
       </div>
       <div

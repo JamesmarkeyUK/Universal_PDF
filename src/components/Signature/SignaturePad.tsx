@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { Stage, Layer, Line } from 'react-konva'
 import type Konva from 'konva'
 import { useSignatureStore } from '../../stores/signatureStore'
+import { useAnnotationStore } from '../../stores/annotationStore'
 
 const PAD_W = 600
 const PAD_H = 240
@@ -89,6 +90,10 @@ export default function SignaturePad() {
     closePad()
     if (andVerify) {
       openEmailVerify(id)
+    } else {
+      // Arm the signature tool so the user can immediately drop the new
+      // signature — the active signature was set by add() above.
+      useAnnotationStore.getState().setTool('signature')
     }
   }
 

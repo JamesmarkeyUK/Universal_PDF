@@ -293,8 +293,6 @@ export function ToolbarDesktopTools() {
 
   return (
     <div className="hidden md:flex items-center gap-1 text-white">
-      <div className="w-px h-6 bg-slate-700 mx-1" />
-
       {/* Select / Hand with options panel */}
       <div ref={selectGroupRef} className="relative flex items-start">
         {toolBtn(
