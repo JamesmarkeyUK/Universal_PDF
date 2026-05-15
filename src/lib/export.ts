@@ -13,6 +13,29 @@ function rotatePoint(x: number, y: number, cx: number, cy: number, rad: number):
   return [cx + dx * cos - dy * sin, cy + dx * sin + dy * cos]
 }
 
+// Codepoints WinAnsi (cp1252) can represent in addition to ASCII (0x20-0x7E)
+// and Latin-1 supplement (0xA0-0xFF). Anything outside this set blows up
+// pdf-lib's standard fonts on encode — we replace it with '?' so a stray
+// glyph doesn't kill the whole export.
+const WIN_ANSI_EXTRAS = new Set([
+  0x20AC, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021, 0x02C6,
+  0x2030, 0x0160, 0x2039, 0x0152, 0x017D, 0x2018, 0x2019, 0x201C,
+  0x201D, 0x2022, 0x2013, 0x2014, 0x02DC, 0x2122, 0x0161, 0x203A,
+  0x0153, 0x017E, 0x0178
+])
+function sanitizeForWinAnsi(text: string): string {
+  let out = ''
+  for (const ch of text) {
+    const cp = ch.codePointAt(0)!
+    if ((cp >= 0x20 && cp <= 0x7E) || (cp >= 0xA0 && cp <= 0xFF) || WIN_ANSI_EXTRAS.has(cp)) {
+      out += ch
+    } else {
+      out += '?'
+    }
+  }
+  return out
+}
+
 // Convert a polyline (flat [x0,y0,x1,y1,...]) to a sequence of cardinal-spline
 // Bezier segments matching Konva's `tension` smoothing on the screen overlay.
 function smoothPolyline(points: number[], tension = 0.4, samplesPerSeg = 12) {
@@ -94,31 +117,77 @@ export async function buildAnnotatedPdfBytes(
   for (const [pageIndex, items] of byPage) {
     const page = pages[pageIndex]
     if (!page) continue
-    const { height: ph } = page.getSize()
-    const sx = (n: number) => n / scale
-    const toY = (canvasY: number) => ph - canvasY / scale
+    // PDF.js's viewport (used for the on-screen canvas) is anchored at the
+    // page's CropBox origin, not at user-space (0, 0). When a PDF declares
+    // a non-zero CropBox/MediaBox origin, every annotation we draw with
+    // pdf-lib would otherwise be shifted by that offset against the
+    // rasterized page — the form fields stay put because pdf-lib's
+    // flatten() works in user-space already.
+    const box = page.getCropBox()
+    const ph = box.height
+    const ox = box.x
+    const oy = box.y
+    // sx/toY map a canvas-space position to PDF user-space (offset included).
+    // sw maps a canvas-space size — width, height, font size — to PDF
+    // user-space (scale only, no offset).
+    const sx = (n: number) => ox + n / scale
+    const toY = (canvasY: number) => oy + ph - canvasY / scale
+    const sw = (n: number) => n / scale
 
     for (const a of items) {
       switch (a.type) {
         case 'text': {
           const rot = a.rotation ?? 0
           const rad = (rot * Math.PI) / 180
-          // Konva text top-left is (a.x, a.y); the baseline sits roughly
-          // 0.8 * fontSize below. pdf-lib draws from the baseline, so we
-          // rotate the baseline-left point around the Konva pivot (top-left)
-          // and use it as the pdf-lib origin with the inverse rotation
-          // (PDF Y-axis is flipped relative to Konva).
-          const blKx = a.x
-          const blKy = a.y + a.fontSize * 0.8
-          const [bx, by] = rotatePoint(blKx, blKy, a.x, a.y, rad)
-          page.drawText(a.text, {
-            x: sx(bx),
-            y: ph - by / scale,
-            size: a.fontSize / scale,
-            font: pickFont(a.fontFamily),
-            color: hexToPdfRgb(a.color),
-            rotate: rot ? degrees(-rot) : undefined
-          })
+          // Verified-signature labels prefix the text with U+2713 ("✓ "),
+          // which WinAnsi can't encode. Render it as a vector tick (matching
+          // the example PDF) and continue the text after.
+          const hasTick = a.text.startsWith('✓')
+          const bodyRaw = hasTick ? a.text.replace(/^✓\s*/, '') : a.text
+          const body = sanitizeForWinAnsi(bodyRaw)
+          const tickSize = hasTick ? a.fontSize * 0.85 : 0
+          const tickGap = hasTick ? a.fontSize * 0.25 : 0
+          const textOffsetX = tickSize + tickGap
+
+          if (hasTick) {
+            // Tick lives inside a tickSize × tickSize box anchored at (a.x, a.y).
+            // Same geometry as the standalone tick annotation, scaled to font size.
+            const s = tickSize
+            const segs: Array<[number, number, number, number]> = [
+              [a.x, a.y + s * 0.55, a.x + s * 0.35, a.y + s * 0.9],
+              [a.x + s * 0.35, a.y + s * 0.9, a.x + s, a.y + s * 0.1]
+            ]
+            for (const [x1, y1, x2, y2] of segs) {
+              const [rx1, ry1] = rotatePoint(x1, y1, a.x, a.y, rad)
+              const [rx2, ry2] = rotatePoint(x2, y2, a.x, a.y, rad)
+              page.drawLine({
+                start: { x: sx(rx1), y: toY(ry1) },
+                end: { x: sx(rx2), y: toY(ry2) },
+                thickness: sw(Math.max(0.9, a.fontSize / 8)),
+                color: hexToPdfRgb(a.color),
+                lineCap: LineCapStyle.Round
+              })
+            }
+          }
+
+          if (body) {
+            // Konva text top-left is (a.x + textOffsetX, a.y); the baseline sits
+            // roughly 0.8 * fontSize below. pdf-lib draws from the baseline, so
+            // we rotate the baseline-left point around the Konva pivot (top-left)
+            // and use it as the pdf-lib origin with the inverse rotation
+            // (PDF Y-axis is flipped relative to Konva).
+            const blKx = a.x + textOffsetX
+            const blKy = a.y + a.fontSize * 0.8
+            const [bx, by] = rotatePoint(blKx, blKy, a.x, a.y, rad)
+            page.drawText(body, {
+              x: sx(bx),
+              y: toY(by),
+              size: sw(a.fontSize),
+              font: pickFont(a.fontFamily),
+              color: hexToPdfRgb(a.color),
+              rotate: rot ? degrees(-rot) : undefined
+            })
+          }
           break
         }
         case 'rect': {
@@ -129,11 +198,11 @@ export async function buildAnnotatedPdfBytes(
           const [bx, by] = rotatePoint(a.x, a.y + a.height, a.x, a.y, rad)
           page.drawRectangle({
             x: sx(bx),
-            y: ph - by / scale,
-            width: sx(a.width),
-            height: sx(a.height),
+            y: toY(by),
+            width: sw(a.width),
+            height: sw(a.height),
             borderColor: hexToPdfRgb(a.color),
-            borderWidth: 2 / scale,
+            borderWidth: sw(2),
             opacity: 0,
             rotate: rot ? degrees(-rot) : undefined
           })
@@ -145,7 +214,7 @@ export async function buildAnnotatedPdfBytes(
             page.drawLine({
               start: { x: sx(pts[i]), y: toY(pts[i + 1]) },
               end: { x: sx(pts[i + 2]), y: toY(pts[i + 3]) },
-              thickness: a.strokeWidth / scale,
+              thickness: sw(a.strokeWidth),
               color: hexToPdfRgb(a.color),
               lineCap: LineCapStyle.Round
             })
@@ -165,7 +234,7 @@ export async function buildAnnotatedPdfBytes(
             page.drawLine({
               start: { x: sx(rx1), y: toY(ry1) },
               end: { x: sx(rx2), y: toY(ry2) },
-              thickness: 3.5 / scale,
+              thickness: sw(3.5),
               color: hexToPdfRgb(a.color),
               lineCap: LineCapStyle.Round
             })
@@ -185,7 +254,7 @@ export async function buildAnnotatedPdfBytes(
             page.drawLine({
               start: { x: sx(rx1), y: toY(ry1) },
               end: { x: sx(rx2), y: toY(ry2) },
-              thickness: 3.5 / scale,
+              thickness: sw(3.5),
               color: hexToPdfRgb(a.color),
               lineCap: LineCapStyle.Round
             })
@@ -202,9 +271,9 @@ export async function buildAnnotatedPdfBytes(
           const [bx, by] = rotatePoint(a.x, a.y + a.height, a.x, a.y, rad)
           page.drawImage(img, {
             x: sx(bx),
-            y: ph - by / scale,
-            width: sx(a.width),
-            height: sx(a.height),
+            y: toY(by),
+            width: sw(a.width),
+            height: sw(a.height),
             rotate: rot ? degrees(-rot) : undefined
           })
           break
