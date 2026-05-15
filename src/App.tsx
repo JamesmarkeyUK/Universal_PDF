@@ -15,7 +15,6 @@ import AIToolsPanel from './components/AI/AIToolsPanel'
 import LandingPage from './components/Landing/LandingPage'
 import LivePreview from './components/Preview/LivePreview'
 import EnterpriseMenu from './components/Header/EnterpriseMenu'
-import FileNameEditor from './components/Header/FileNameEditor'
 import VersionChip from './components/Header/VersionChip'
 import FileMenu from './components/Toolbar/FileMenu'
 import MobileWelcomeToast from './components/Onboarding/MobileWelcomeToast'
@@ -39,7 +38,6 @@ function isPdfFile(file: File) {
 
 export default function App() {
   const loadFile = usePdfStore((s) => s.loadFile)
-  const fileName = usePdfStore((s) => s.fileName)
   const doc = usePdfStore((s) => s.doc)
   const loading = usePdfStore((s) => s.loading)
   const refreshRecents = usePdfStore((s) => s.refreshRecents)
@@ -114,23 +112,22 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-full bg-slate-100">
-      <header className="bg-slate-900 text-white">
-        <div className="relative mx-auto w-full max-w-7xl grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-2">
-          <div className="flex items-center gap-2">
+      <header className="bg-slate-900 text-white relative">
+        <div className="mx-auto w-full max-w-7xl flex items-center justify-between gap-3 pl-4 pr-14 sm:pr-16 py-2">
+          <div className="flex items-center gap-2 min-w-0">
             <FileMenu variant="header" />
             <VersionChip />
             {doc && <ToolbarDesktopTools />}
           </div>
-          <div className="flex justify-center min-w-0">
-            {fileName && <FileNameEditor />}
-          </div>
           <div className="flex items-center gap-2 justify-end">
             {doc && <ToolbarDesktopActions />}
-            <EnterpriseMenu
-              onAIOpen={() => setAiOpen(true)}
-              aiEnabled={!!doc}
-            />
           </div>
+        </div>
+        <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2">
+          <EnterpriseMenu
+            onAIOpen={() => setAiOpen(true)}
+            aiEnabled={!!doc}
+          />
         </div>
       </header>
 

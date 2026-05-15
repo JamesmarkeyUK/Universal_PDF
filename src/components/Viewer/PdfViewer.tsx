@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { usePdfStore } from '../../stores/pdfStore'
 import { useAnnotationStore } from '../../stores/annotationStore'
+import FileNameEditor from '../Header/FileNameEditor'
 import PdfPage from './PdfPage'
 
 // "100% zoom" in standard PDF viewers means physical paper size on screen.
@@ -151,25 +152,30 @@ export default function PdfViewer() {
   return (
     <div className="flex flex-col h-full">
       <div className="bg-slate-100 border-b border-slate-200">
-        <div className="mx-auto w-full max-w-7xl flex items-center gap-2 px-4 py-1.5 text-sm text-slate-600">
-          {numPages > 1 ? (
-            <button
-              onClick={togglePageNav}
-              title="Show pages"
-              className={`flex items-center gap-1.5 px-2.5 h-8 rounded text-sm font-medium transition-colors ${
-                pageNavOpen
-                  ? 'bg-orange-600 text-white hover:bg-orange-500'
-                  : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
-              }`}
-            >
-              <span aria-hidden="true">☰</span>
-              <span>Pages</span>
-              <span className="opacity-70 tabular-nums">{numPages}</span>
-            </button>
-          ) : (
-            <span className="px-1">{numPages} page</span>
-          )}
-          <div className="ml-auto flex items-center gap-2">
+        <div className="mx-auto w-full max-w-7xl grid grid-cols-[auto_1fr_auto] items-center gap-2 px-4 py-1.5 text-sm text-slate-600">
+          <div className="flex items-center">
+            {numPages > 1 ? (
+              <button
+                onClick={togglePageNav}
+                title="Show pages"
+                className={`flex items-center gap-1.5 px-2.5 h-8 rounded text-sm font-medium transition-colors ${
+                  pageNavOpen
+                    ? 'bg-orange-600 text-white hover:bg-orange-500'
+                    : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <span aria-hidden="true">☰</span>
+                <span>Pages</span>
+                <span className="opacity-70 tabular-nums">{numPages}</span>
+              </button>
+            ) : (
+              <span className="px-1">{numPages} page</span>
+            )}
+          </div>
+          <div className="flex justify-center min-w-0">
+            <FileNameEditor />
+          </div>
+          <div className="flex items-center gap-2 justify-end">
             <button
               onClick={() => setZoom((z) => Math.max(MIN_ZOOM, +(z - ZOOM_STEP).toFixed(2)))}
               className="w-7 h-7 rounded bg-white border border-slate-300 hover:bg-slate-50"
