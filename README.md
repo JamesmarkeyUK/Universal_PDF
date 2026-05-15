@@ -41,7 +41,7 @@ Signatures: tap *Sign → Draw new signature*, sign with mouse or finger, save. 
 Requires Node 22+ and npm.
 
 ```sh
-git clone https://github.com/JamesmarkeyUK/Universal_PDF.git
+git clone https://github.com/universal-simulation-ltd/Universal_PDF.git
 cd Universal_PDF
 npm install
 npm run dev

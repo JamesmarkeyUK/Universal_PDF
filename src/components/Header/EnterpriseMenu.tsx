@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 const UPSELL_URL = 'https://www.unisim.co.uk'
-const REPO_URL = 'https://github.com/JamesmarkeyUK/Universal_PDF'
+const REPO_URL = 'https://github.com/universal-simulation-ltd/Universal_PDF'
 
 type Item =
   | {

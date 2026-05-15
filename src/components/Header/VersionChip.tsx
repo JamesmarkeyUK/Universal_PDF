@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { CHANGELOG } from '../../lib/changelog'
 
-const REPO_URL = 'https://github.com/JamesmarkeyUK/Universal_PDF'
+const REPO_URL = 'https://github.com/universal-simulation-ltd/Universal_PDF'
 
 // Tailwind classes are static strings so the JIT can discover them — each
 // palette entry is a complete chip skin. The version is hashed into this
