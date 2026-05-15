@@ -86,6 +86,37 @@ function isTransformable(a: Annotation): boolean {
   return a.type !== 'draw'
 }
 
+// Faint cursor-following preview of the active signature shown while the
+// signature tool is armed. Non-interactive so it never swallows pointer
+// events from the underlying Stage.
+function SignatureGhost({
+  src,
+  x,
+  y,
+  width,
+  height
+}: {
+  src: string
+  x: number
+  y: number
+  width: number
+  height: number
+}) {
+  const img = useImage(src)
+  if (!img) return null
+  return (
+    <KonvaImage
+      listening={false}
+      image={img}
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      opacity={0.45}
+    />
+  )
+}
+
 function SignatureImage({
   a,
   shapeRef,
@@ -146,12 +177,20 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
   const setSelected = useAnnotationStore((s) => s.setSelected)
   const setTool = useAnnotationStore((s) => s.setTool)
 
+  const activeSignature = useSignatureStore((s) => {
+    const id = s.activeId
+    return id ? s.signatures.find((x) => x.id === id) ?? null : null
+  })
+
   const annotations = allAnnotations.filter((a) => a.pageIndex === pageIndex)
 
   const drawingRef = useRef(false)
   const [currentLine, setCurrentLine] = useState<number[] | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
+  // Pointer position used to render the ghost-signature preview that
+  // follows the cursor while the signature tool is armed.
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null)
   // ID of an annotation that, on its next drag, should move on its own
   // (uncoupled from its linked partner). Re-armed via double-click.
   const [unlinkOnceId, setUnlinkOnceId] = useState<string | null>(null)
@@ -303,13 +342,23 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
   }
 
   function onPointerMove(e: Konva.KonvaEventObject<PointerEvent>) {
-    if (!drawingRef.current) return
     const pos = getPos(e)
+    if (tool === 'signature' && activeSignature) {
+      setHoverPos({ x: pos.x, y: pos.y })
+    } else if (hoverPos) {
+      setHoverPos(null)
+    }
+    if (!drawingRef.current) return
     setCurrentLine((prev) => {
       if (!prev) return null
       if (tool === 'rect') return [prev[0], prev[1], pos.x, pos.y]
       return [...prev, pos.x, pos.y]
     })
+  }
+
+  function onPointerLeaveStage() {
+    setHoverPos(null)
+    onPointerUp()
   }
 
   function onPointerUp() {
@@ -480,8 +529,14 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
   const cursor =
     tool === 'hand' ? 'grab' :
     (tool === 'select' || tool === 'form') ? 'default' :
+    tool === 'signature' && activeSignature ? 'none' :
     'crosshair'
   const touchAction = (tool === 'select' || tool === 'form' || tool === 'hand') ? 'pan-y pinch-zoom' : 'none'
+
+  const ghostSigWidth = 160
+  const ghostSigHeight = activeSignature
+    ? (ghostSigWidth * activeSignature.height) / activeSignature.width
+    : 0
 
   return (
     <>
@@ -497,7 +552,7 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerLeave={onPointerUp}
+        onPointerLeave={onPointerLeaveStage}
       >
         <Layer>
           {annotations.map((a) => {
@@ -646,6 +701,16 @@ export default function AnnotationLayer({ pageIndex, width, height }: Props) {
               />
             )
           })()}
+
+          {tool === 'signature' && activeSignature && hoverPos && (
+            <SignatureGhost
+              src={activeSignature.dataUrl}
+              x={hoverPos.x - ghostSigWidth / 2}
+              y={hoverPos.y - ghostSigHeight / 2}
+              width={ghostSigWidth}
+              height={ghostSigHeight}
+            />
+          )}
 
           {(() => {
             const selected = annotations.find((a) => a.id === selectedId)
