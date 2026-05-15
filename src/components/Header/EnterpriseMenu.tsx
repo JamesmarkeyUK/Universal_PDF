@@ -89,7 +89,13 @@ export default function EnterpriseMenu({ onAIOpen, aiEnabled = true }: Props) {
   }
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative flex items-center gap-2" ref={ref}>
+      <img
+        src="/UNISIM_Icon.png"
+        alt=""
+        aria-hidden="true"
+        className={`h-6 w-auto pointer-events-none ${open ? 'opacity-100' : 'opacity-50'}`}
+      />
       <button
         onClick={() => setOpen((o) => !o)}
         className="h-8 px-3 rounded-md bg-white/10 hover:bg-white/15 text-white text-sm font-medium flex items-center gap-1.5 ring-1 ring-white/15"
@@ -104,7 +110,7 @@ export default function EnterpriseMenu({ onAIOpen, aiEnabled = true }: Props) {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white text-slate-900 rounded-xl shadow-2xl border border-slate-200 overflow-hidden z-50">
+        <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white text-slate-900 rounded-xl shadow-2xl border border-slate-200 overflow-hidden z-50">
           <div className="px-4 py-3 bg-gradient-to-br from-slate-900 to-slate-800 text-white">
             <div className="text-xs uppercase tracking-wide opacity-70">Universal PDF for teams</div>
             <div className="text-sm font-semibold mt-0.5">Unlock more with Enterprise</div>

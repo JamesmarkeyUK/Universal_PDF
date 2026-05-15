@@ -86,9 +86,10 @@ function isTransformable(a: Annotation): boolean {
   return a.type !== 'draw'
 }
 
-// Faint cursor-following preview of the active signature shown while the
-// signature tool is armed. Non-interactive so it never swallows pointer
-// events from the underlying Stage.
+// Cursor-following preview of the active signature shown while the signature
+// tool is armed. Rendered at full opacity so it reads as the signature itself
+// following the mouse, ready to be dropped on click. Non-interactive so it
+// never swallows pointer events from the underlying Stage.
 function SignatureGhost({
   src,
   x,
@@ -112,7 +113,6 @@ function SignatureGhost({
       y={y}
       width={width}
       height={height}
-      opacity={0.45}
     />
   )
 }

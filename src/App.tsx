@@ -113,15 +113,22 @@ export default function App() {
   return (
     <div className="flex flex-col h-full bg-slate-100">
       <header className="bg-slate-900 text-white relative">
-        <div className="mx-auto w-full max-w-7xl flex items-center justify-between gap-3 pl-4 pr-14 sm:pr-16 py-2">
+        <div className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          <FileMenu variant="header" />
+          <VersionChip />
+        </div>
+        <div style={{ paddingRight: 'var(--doc-scrollbar-width, 0px)' }}>
+        <div
+          className="mx-auto w-full flex items-center justify-between gap-3 py-2"
+          style={{ maxWidth: 'clamp(600px, var(--doc-display-width, 80rem), 80rem)' }}
+        >
           <div className="flex items-center gap-2 min-w-0">
-            <FileMenu variant="header" />
-            <VersionChip />
             {doc && <ToolbarDesktopTools />}
           </div>
           <div className="flex items-center gap-2 justify-end">
             {doc && <ToolbarDesktopActions />}
           </div>
+        </div>
         </div>
         <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2">
           <EnterpriseMenu
