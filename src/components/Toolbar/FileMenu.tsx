@@ -10,6 +10,9 @@ interface Props {
 export default function FileMenu({ variant = 'toolbar' }: Props) {
   const annotations = useAnnotationStore((s) => s.annotations)
   const undo = useAnnotationStore((s) => s.undo)
+  const redo = useAnnotationStore((s) => s.redo)
+  const canUndo = useAnnotationStore((s) => s.past.length > 0)
+  const canRedo = useAnnotationStore((s) => s.future.length > 0)
   const clearAll = useAnnotationStore((s) => s.clearAll)
 
   const doc = usePdfStore((s) => s.doc)
@@ -21,7 +24,6 @@ export default function FileMenu({ variant = 'toolbar' }: Props) {
   const renameFile = usePdfStore((s) => s.renameFile)
   const reset = usePdfStore((s) => s.reset)
 
-  const canUndo = annotations.length > 0
   const canClear = annotations.length > 0
   const canShowPages = !!doc && numPages > 1
   const canRename = !!doc && !!fileName
@@ -102,9 +104,14 @@ export default function FileMenu({ variant = 'toolbar' }: Props) {
     if (!renameOpen || !renameInputRef.current) return
     const el = renameInputRef.current
     el.focus()
-    const stem = /\.pdf$/i.test(renameDraft) ? renameDraft.length - 4 : renameDraft.length
+    const value = el.value
+    const stem = /\.pdf$/i.test(value) ? value.length - 4 : value.length
     el.setSelectionRange(0, stem)
-  }, [renameOpen, renameDraft])
+    // Run only when opening the rename row — keeping `renameDraft` in
+    // the dep array would re-select the text on every keystroke and
+    // make each new character replace the selection.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renameOpen])
 
   function startRename() {
     if (!fileName) return
@@ -253,6 +260,15 @@ export default function FileMenu({ variant = 'toolbar' }: Props) {
             <span aria-hidden="true">↶</span>
             <span className="flex-1 text-left">Undo</span>
             <span className="text-[11px] text-slate-400 tracking-wide">Ctrl+Z</span>
+          </button>
+          <button
+            onClick={() => { if (canRedo) { redo(); setOpen(false) } }}
+            disabled={!canRedo}
+            className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 text-sm disabled:opacity-40 disabled:cursor-not-allowed border-t border-slate-100"
+          >
+            <span aria-hidden="true">↷</span>
+            <span className="flex-1 text-left">Redo</span>
+            <span className="text-[11px] text-slate-400 tracking-wide">Ctrl+Y</span>
           </button>
           <button
             onClick={() => { if (canClear) { clearAll(); setOpen(false) } }}

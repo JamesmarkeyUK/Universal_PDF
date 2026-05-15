@@ -61,6 +61,7 @@ let clipboardAnnotation: Annotation | null = null
 export function useToolbarKeyboardShortcuts(enabled: boolean) {
   const selectedId = useAnnotationStore((s) => s.selectedId)
   const undo = useAnnotationStore((s) => s.undo)
+  const redo = useAnnotationStore((s) => s.redo)
   const remove = useAnnotationStore((s) => s.remove)
   const add = useAnnotationStore((s) => s.add)
 
@@ -78,9 +79,14 @@ export function useToolbarKeyboardShortcuts(enabled: boolean) {
       if (isEditable(document.activeElement)) return
       const mod = e.ctrlKey || e.metaKey
       const key = e.key.toLowerCase()
-      if (mod && key === 'z') {
+      if (mod && key === 'z' && !e.shiftKey) {
         e.preventDefault()
         undo()
+        return
+      }
+      if (mod && (key === 'y' || (key === 'z' && e.shiftKey))) {
+        e.preventDefault()
+        redo()
         return
       }
       if (mod && key === 'c') {
@@ -124,7 +130,7 @@ export function useToolbarKeyboardShortcuts(enabled: boolean) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [enabled, selectedId, remove, undo, add])
+  }, [enabled, selectedId, remove, undo, redo, add])
 }
 
 const isDrawShape = (t: Tool) => t === 'tick' || t === 'cross' || t === 'rect'
@@ -467,6 +473,7 @@ export function ToolbarMobile() {
   const setColor = useAnnotationStore((s) => s.setColor)
   const setStrokeWidth = useAnnotationStore((s) => s.setStrokeWidth)
   const undo = useAnnotationStore((s) => s.undo)
+  const canUndo = useAnnotationStore((s) => s.past.length > 0)
   const remove = useAnnotationStore((s) => s.remove)
   const fontSize = useAnnotationStore((s) => s.fontSize)
   const setFontSize = useAnnotationStore((s) => s.setFontSize)
@@ -749,7 +756,7 @@ export function ToolbarMobile() {
 
         <button
           onClick={undo}
-          disabled={annotations.length === 0}
+          disabled={!canUndo}
           className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-slate-200 disabled:opacity-40"
         >
           <span className="text-xl leading-none">↶</span>

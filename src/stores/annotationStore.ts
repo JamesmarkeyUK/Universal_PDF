@@ -10,6 +10,8 @@ interface AnnotationState {
   annotations: Annotation[]
   selectedId: string | null
   uploadedImageSrc: string | null
+  past: Annotation[][]
+  future: Annotation[][]
   setTool: (t: Tool) => void
   setColor: (c: string) => void
   setStrokeWidth: (w: number) => void
@@ -23,6 +25,14 @@ interface AnnotationState {
   clearPage: (pageIndex: number) => void
   clearAll: () => void
   undo: () => void
+  redo: () => void
+}
+
+const MAX_HISTORY = 100
+
+function pushPast(past: Annotation[][], current: Annotation[]): Annotation[][] {
+  const next = [...past, current]
+  return next.length > MAX_HISTORY ? next.slice(-MAX_HISTORY) : next
 }
 
 export const useAnnotationStore = create<AnnotationState>((set) => ({
@@ -34,6 +44,8 @@ export const useAnnotationStore = create<AnnotationState>((set) => ({
   annotations: [],
   selectedId: null,
   uploadedImageSrc: null,
+  past: [],
+  future: [],
   setTool: (tool) => set({ tool }),
   setUploadedImageSrc: (uploadedImageSrc) => set({ uploadedImageSrc }),
   setColor: (color) =>
@@ -44,7 +56,9 @@ export const useAnnotationStore = create<AnnotationState>((set) => ({
           color,
           annotations: s.annotations.map((a) =>
             a.id === sel.id ? ({ ...a, color } as Annotation) : a
-          )
+          ),
+          past: pushPast(s.past, s.annotations),
+          future: []
         }
       }
       return { color }
@@ -57,7 +71,9 @@ export const useAnnotationStore = create<AnnotationState>((set) => ({
           strokeWidth,
           annotations: s.annotations.map((a) =>
             a.id === sel.id ? ({ ...a, strokeWidth } as Annotation) : a
-          )
+          ),
+          past: pushPast(s.past, s.annotations),
+          future: []
         }
       }
       return { strokeWidth }
@@ -70,7 +86,9 @@ export const useAnnotationStore = create<AnnotationState>((set) => ({
           fontSize,
           annotations: s.annotations.map((a) =>
             a.id === sel.id ? ({ ...a, fontSize } as Annotation) : a
-          )
+          ),
+          past: pushPast(s.past, s.annotations),
+          future: []
         }
       }
       return { fontSize }
@@ -83,30 +101,69 @@ export const useAnnotationStore = create<AnnotationState>((set) => ({
           fontFamily,
           annotations: s.annotations.map((a) =>
             a.id === sel.id ? ({ ...a, fontFamily } as Annotation) : a
-          )
+          ),
+          past: pushPast(s.past, s.annotations),
+          future: []
         }
       }
       return { fontFamily }
     }),
   setSelected: (selectedId) => set({ selectedId }),
-  add: (a) => set((s) => ({ annotations: [...s.annotations, a], selectedId: a.id })),
+  add: (a) =>
+    set((s) => ({
+      annotations: [...s.annotations, a],
+      selectedId: a.id,
+      past: pushPast(s.past, s.annotations),
+      future: []
+    })),
   update: (id, patch) =>
     set((s) => ({
       annotations: s.annotations.map((a) =>
         a.id === id ? ({ ...a, ...patch } as Annotation) : a
-      )
+      ),
+      past: pushPast(s.past, s.annotations),
+      future: []
     })),
   remove: (id) =>
     set((s) => ({
       annotations: s.annotations.filter((a) => a.id !== id),
-      selectedId: s.selectedId === id ? null : s.selectedId
+      selectedId: s.selectedId === id ? null : s.selectedId,
+      past: pushPast(s.past, s.annotations),
+      future: []
     })),
   clearPage: (pageIndex) =>
-    set((s) => ({ annotations: s.annotations.filter((a) => a.pageIndex !== pageIndex) })),
-  clearAll: () => set({ annotations: [], selectedId: null }),
-  undo: () =>
     set((s) => ({
-      annotations: s.annotations.slice(0, -1),
-      selectedId: null
-    }))
+      annotations: s.annotations.filter((a) => a.pageIndex !== pageIndex),
+      past: pushPast(s.past, s.annotations),
+      future: []
+    })),
+  clearAll: () =>
+    set((s) => ({
+      annotations: [],
+      selectedId: null,
+      past: pushPast(s.past, s.annotations),
+      future: []
+    })),
+  undo: () =>
+    set((s) => {
+      if (s.past.length === 0) return {}
+      const prev = s.past[s.past.length - 1]
+      return {
+        annotations: prev,
+        past: s.past.slice(0, -1),
+        future: [...s.future, s.annotations],
+        selectedId: null
+      }
+    }),
+  redo: () =>
+    set((s) => {
+      if (s.future.length === 0) return {}
+      const next = s.future[s.future.length - 1]
+      return {
+        annotations: next,
+        past: [...s.past, s.annotations],
+        future: s.future.slice(0, -1),
+        selectedId: null
+      }
+    })
 }))

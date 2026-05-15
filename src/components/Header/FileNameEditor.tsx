@@ -10,12 +10,16 @@ export default function FileNameEditor() {
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (editing && inputRef.current) {
-      inputRef.current.focus()
-      const ext = /\.pdf$/i.test(draft) ? draft.length - 4 : draft.length
-      inputRef.current.setSelectionRange(0, ext)
-    }
-  }, [editing, draft])
+    if (!editing || !inputRef.current) return
+    const el = inputRef.current
+    el.focus()
+    const value = el.value
+    const stem = /\.pdf$/i.test(value) ? value.length - 4 : value.length
+    el.setSelectionRange(0, stem)
+    // Run only when entering edit mode — otherwise the selection would
+    // be reset on every keystroke, replacing each character typed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing])
 
   if (!fileName) return null
 
