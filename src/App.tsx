@@ -31,7 +31,7 @@ if (typeof document !== 'undefined') {
 import { usePdfStore } from './stores/pdfStore'
 import { useSignatureStore } from './stores/signatureStore'
 
-const REPO_URL = 'https://github.com/JamesmarkeyUK/Universal_PDF'
+const REPO_URL = 'https://github.com/universal-simulation-ltd/Universal_PDF'
 
 function isPdfFile(file: File) {
   return file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
