@@ -19,6 +19,7 @@ export default function FileMenu({ variant = 'toolbar' }: Props) {
   const togglePageNav = usePdfStore((s) => s.togglePageNav)
   const loadFile = usePdfStore((s) => s.loadFile)
   const renameFile = usePdfStore((s) => s.renameFile)
+  const reset = usePdfStore((s) => s.reset)
 
   const canUndo = annotations.length > 0
   const canClear = annotations.length > 0
@@ -126,17 +127,33 @@ export default function FileMenu({ variant = 'toolbar' }: Props) {
 
   return (
     <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className={triggerClass}
-        aria-haspopup="true"
-        aria-expanded={open}
-      >
-        File
-        <svg viewBox="0 0 12 12" className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true">
-          <path d="M2 4 L6 8 L10 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
+      {variant === 'header' ? (
+        <button
+          onClick={() => setOpen((o) => !o)}
+          aria-haspopup="true"
+          aria-expanded={open}
+          title="Universal PDF — menu"
+          className="flex items-center gap-2 px-1.5 py-1 rounded-md hover:bg-white/5 transition-colors text-white"
+        >
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-600 text-white text-[11px] font-bold">U</span>
+          <span className="hidden sm:inline font-semibold tracking-tight">Universal PDF</span>
+          <svg viewBox="0 0 12 12" className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true">
+            <path d="M2 4 L6 8 L10 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      ) : (
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className={triggerClass}
+          aria-haspopup="true"
+          aria-expanded={open}
+        >
+          File
+          <svg viewBox="0 0 12 12" className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true">
+            <path d="M2 4 L6 8 L10 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      )}
       <input
         ref={fileInputRef}
         type="file"
@@ -145,7 +162,16 @@ export default function FileMenu({ variant = 'toolbar' }: Props) {
         onChange={onPick}
       />
       {open && (
-        <div className={`absolute right-0 ${variant === 'header' ? 'mt-2' : 'mt-1'} w-60 bg-white text-slate-900 rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden`}>
+        <div className={`absolute ${variant === 'header' ? 'left-0 mt-2' : 'right-0 mt-1'} w-60 bg-white text-slate-900 rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden`}>
+          {doc && (
+            <button
+              onClick={() => { reset(); setOpen(false) }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 text-sm border-b border-slate-100"
+            >
+              <span aria-hidden="true">🏠</span>
+              <span className="flex-1 text-left">Close PDF</span>
+            </button>
+          )}
           <button
             onClick={() => { fileInputRef.current?.click(); setOpen(false) }}
             className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-orange-50 hover:text-orange-700 text-sm"
