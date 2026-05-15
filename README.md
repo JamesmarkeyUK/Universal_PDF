@@ -1,6 +1,6 @@
 # Universal PDF
 
-> Free and open source PDF viewer + editor. Simple and easy to use.
+> Universal PDFs that just work — free and open source PDF viewer + editor.
 
 > Open source — self-host free or PRO hosted by UNI SIM.
 

@@ -98,7 +98,7 @@ export default function LandingPage() {
               Free · No upload · Works offline
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-slate-900">
-              PDFs that <span className="text-orange-600">just work</span>.
+              Universal PDFs that <span className="text-orange-600">just work</span>.
             </h1>
             <p className="mt-3 text-slate-600 max-w-md">
               View, annotate, sign and export — everything stays on your device.
