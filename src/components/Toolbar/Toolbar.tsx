@@ -245,13 +245,16 @@ export function ToolbarDesktopTools() {
     )
   }
 
-  function colorSwatch(hex: string, name: string, small = false) {
+  function colorSwatch(hex: string, name: string, small = false, onActiveReclick?: () => void) {
     const active = color === hex
     return (
       <button
         key={hex}
-        onClick={() => setColor(hex)}
-        title={name}
+        onClick={() => {
+          if (active && onActiveReclick) onActiveReclick()
+          else setColor(hex)
+        }}
+        title={onActiveReclick ? `${name} — click again for more colours` : name}
         className={`rounded-full border-2 transition-transform flex-shrink-0 ${
           small ? 'w-6 h-6' : 'w-7 h-7'
         } ${active ? 'border-white scale-110' : 'border-slate-600 hover:scale-105'}`}
@@ -360,8 +363,8 @@ export function ToolbarDesktopTools() {
       <div ref={drawGroupRef} className="relative flex items-start gap-1">
         {toolBtn('draw', '✎', 'Free draw', 'draw')}
         <div className="flex items-center gap-1 self-center ml-1">
-          {colorSwatch('#000000', 'Black', true)}
-          {colorSwatch('#ffffff', 'White', true)}
+          {colorSwatch('#000000', 'Black', true, () => setOpenPanel('draw'))}
+          {colorSwatch('#ffffff', 'White', true, () => setOpenPanel('draw'))}
         </div>
         <PlusBox panel="draw" />
         {openPanel === 'draw' && (

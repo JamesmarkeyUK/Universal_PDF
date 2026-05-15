@@ -117,19 +117,8 @@ export default function App() {
       <header className="bg-slate-900 text-white">
         <div className="relative mx-auto w-full max-w-7xl grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-2">
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                if (doc) usePdfStore.getState().reset()
-              }}
-              title="Universal PDF — home"
-              className="flex items-center gap-2 px-1 py-0.5 rounded hover:bg-white/5 transition-colors"
-            >
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-orange-600 text-white text-[11px] font-bold">U</span>
-              <span className="font-semibold tracking-tight">Universal PDF</span>
-            </button>
-            <VersionChip />
             <FileMenu variant="header" />
+            <VersionChip />
             {doc && <ToolbarDesktopTools />}
           </div>
           <div className="flex justify-center min-w-0">
