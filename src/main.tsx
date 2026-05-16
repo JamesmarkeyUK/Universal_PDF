@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { UniversalProvider } from '@unisim/sdk'
 import App from './App'
 import { usePdfStore } from './stores/pdfStore'
 import { useAnnotationStore } from './stores/annotationStore'
@@ -14,8 +15,17 @@ if (import.meta.env.DEV) {
   }
 }
 
+const universalConfig = {
+  supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+  supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+  product: 'pdf' as const,
+  cookieDomain: import.meta.env.PROD ? '.unisim.co.uk' : undefined,
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <UniversalProvider config={universalConfig}>
+      <App />
+    </UniversalProvider>
   </React.StrictMode>
 )

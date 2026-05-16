@@ -12,6 +12,7 @@
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
+    "@unisim/sdk": "file:../universal-platform/packages/sdk",
     "konva": "^9.3.20",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.10.38",

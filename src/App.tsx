@@ -18,6 +18,7 @@ import EnterpriseMenu from './components/Header/EnterpriseMenu'
 import VersionChip from './components/Header/VersionChip'
 import FileMenu from './components/Toolbar/FileMenu'
 import MobileWelcomeToast from './components/Onboarding/MobileWelcomeToast'
+import { UniversalBar } from '@unisim/sdk'
 
 // Apply the saved language to <html lang> on first mount.
 import { persistLang, readSavedLang } from './lib/lang'
@@ -112,6 +113,7 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-full bg-slate-100">
+      <UniversalBar />
       <header className="bg-slate-900 text-white relative">
         <div className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
           <FileMenu variant="header" />
