@@ -121,7 +121,7 @@ export default function App() {
         </div>
         <div style={{ paddingRight: 'var(--doc-scrollbar-width, 0px)' }}>
         <div
-          className="mx-auto w-full flex items-center justify-between gap-3 py-2"
+          className="mx-auto w-full flex items-center justify-between gap-3 py-2 min-h-[52px]"
           style={{ maxWidth: 'clamp(600px, var(--doc-display-width, 80rem), 80rem)' }}
         >
           <div className="flex items-center gap-2 min-w-0">
