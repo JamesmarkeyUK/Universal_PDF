@@ -6,7 +6,7 @@
 
 A clean Progressive Web App for viewing, annotating, and signing PDFs — works on Windows, macOS, iOS, and Android in any modern browser, with no upload to a server. Files stay on your device.
 
-**[Try the live app →](https://jamesmarkeyuk.github.io/Universal_PDF/)**
+**[Try the live app →](https://pdf.unisim.co.uk/)**
 
 ## Features
 
@@ -20,7 +20,7 @@ A clean Progressive Web App for viewing, annotating, and signing PDFs — works 
 
 ## Install on your device
 
-Open the [app URL](https://jamesmarkeyuk.github.io/Universal_PDF/), then:
+Open the [app URL](https://pdf.unisim.co.uk/), then:
 
 - **iOS Safari**: Share → *Add to Home Screen*
 - **Android Chrome**: menu → *Install app*
