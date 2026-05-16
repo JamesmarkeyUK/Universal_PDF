@@ -19,15 +19,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: Universal_PDF
+      - uses: actions/checkout@v4
+        with:
+          repository: universal-simulation-ltd/universal-platform
+          path: universal-platform
+          token: ${{ secrets.UNIVERSAL_PLATFORM_TOKEN }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
+          cache-dependency-path: Universal_PDF/package-lock.json
       - run: npm ci
+        working-directory: universal-platform
+      - run: npm ci
+        working-directory: Universal_PDF
       - run: npm run build
+        working-directory: Universal_PDF
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: Universal_PDF/dist
 
   deploy:
     needs: build
