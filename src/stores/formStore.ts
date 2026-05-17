@@ -11,6 +11,7 @@ interface FormState {
   setValue: (pageIndex: number, fieldName: string, value: string) => void
   getValue: (pageIndex: number, fieldName: string) => string
   clearAll: () => void
+  remapPages: (indexMap: Map<number, number>) => void
 }
 
 export const useFormStore = create<FormState>((set, get) => ({
@@ -33,5 +34,11 @@ export const useFormStore = create<FormState>((set, get) => ({
     )
     return found?.value ?? ''
   },
-  clearAll: () => set({ values: [] })
+  clearAll: () => set({ values: [] }),
+  remapPages: (indexMap) =>
+    set((s) => ({
+      values: s.values
+        .filter((v) => indexMap.has(v.pageIndex))
+        .map((v) => ({ ...v, pageIndex: indexMap.get(v.pageIndex)! }))
+    }))
 }))

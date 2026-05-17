@@ -1,6 +1,9 @@
 import { create } from 'zustand'
 import { pdfjsLib, type PDFDocumentProxy } from '../lib/pdfjs'
 import { listRecents, saveRecent, getRecent, getRecentBySlug, deleteRecent, renameRecent, type RecentMeta } from '../lib/recents'
+import { applyPageOrderToPdf, buildPageIndexMap } from '../lib/pdfPages'
+import { useAnnotationStore } from './annotationStore'
+import { useFormStore } from './formStore'
 
 function setHashSlug(slug: string | null) {
   if (typeof window === 'undefined') return
@@ -38,6 +41,9 @@ interface PdfState {
   openRecent: (id: string) => Promise<void>
   removeRecent: (id: string) => Promise<void>
   renameFile: (newName: string) => Promise<void>
+  applyPageOrder: (newOrder: number[]) => Promise<void>
+  deletePage: (pageIndex: number) => Promise<void>
+  movePage: (from: number, to: number) => Promise<void>
 }
 
 export const usePdfStore = create<PdfState>((set, get) => ({
@@ -128,5 +134,55 @@ export const usePdfStore = create<PdfState>((set, get) => ({
     set({ fileName: cleaned })
     await renameRecent(current, cleaned)
     await get().refreshRecents()
+  },
+  applyPageOrder: async (newOrder) => {
+    const bytes = get().sourceBytes
+    const fileName = get().fileName
+    if (!bytes || !fileName) return
+    if (newOrder.length === 0) return
+
+    const current = get().numPages
+    const isNoop =
+      newOrder.length === current && newOrder.every((idx, i) => idx === i)
+    if (isNoop) return
+
+    const newBytes = await applyPageOrderToPdf(bytes, newOrder)
+    const indexMap = buildPageIndexMap(newOrder)
+
+    // Remap annotations/form values BEFORE the new doc renders so they
+    // land on the right pages instead of flashing in stale slots.
+    useAnnotationStore.getState().remapPages(indexMap)
+    useFormStore.getState().remapPages(indexMap)
+
+    get().doc?.destroy()
+    const renderCopy = newBytes.slice(0)
+    const doc = await pdfjsLib.getDocument({ data: renderCopy }).promise
+    set({ doc, numPages: doc.numPages, sourceBytes: newBytes })
+
+    saveRecent(fileName, newBytes)
+      .then((slug) => {
+        if (slug) setHashSlug(slug)
+        return get().refreshRecents()
+      })
+      .catch(() => {})
+  },
+  deletePage: async (pageIndex) => {
+    const total = get().numPages
+    if (total <= 1) return
+    if (pageIndex < 0 || pageIndex >= total) return
+    const newOrder = Array.from({ length: total }, (_, i) => i).filter(
+      (i) => i !== pageIndex
+    )
+    await get().applyPageOrder(newOrder)
+  },
+  movePage: async (from, to) => {
+    const total = get().numPages
+    if (from === to) return
+    if (from < 0 || from >= total) return
+    if (to < 0 || to >= total) return
+    const order = Array.from({ length: total }, (_, i) => i)
+    const [moved] = order.splice(from, 1)
+    order.splice(to, 0, moved)
+    await get().applyPageOrder(order)
   }
 }))
