@@ -16,6 +16,7 @@ export default function LandingPage() {
   const [compressResult, setCompressResult] = useState<CompressResult | null>(null)
   const [dragOverCompress, setDragOverCompress] = useState(false)
   const [transformOpen, setTransformOpen] = useState(false)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
 
   async function runCompress(file: File) {
     if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
@@ -138,26 +139,6 @@ export default function LandingPage() {
                 <div className="flex-1 h-px bg-slate-200" />
               </div>
 
-              {/* Transform text → PDF */}
-              <button
-                type="button"
-                onClick={() => setTransformOpen(true)}
-                className="group w-full flex items-center gap-4 p-4 border border-slate-200 rounded-xl text-left hover:border-sky-400 hover:bg-sky-50/60 transition-colors mb-3"
-              >
-                <div className="shrink-0 w-12 h-12 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center text-2xl">
-                  ✎
-                </div>
-                <div className="min-w-0">
-                  <div className="font-semibold text-slate-900">Transform text into a PDF</div>
-                  <div className="text-sm text-slate-500">
-                    Paste Markdown — headings, lists, tables &amp; code blocks
-                  </div>
-                </div>
-                <span className="ml-auto text-slate-400 group-hover:text-sky-700 transition-colors" aria-hidden="true">
-                  →
-                </span>
-              </button>
-
               {/* Compress */}
               <button
                 type="button"
@@ -213,6 +194,51 @@ export default function LandingPage() {
                 hidden
                 onChange={onCompressFile}
               />
+
+              {/* Advanced Options (collapsed by default) */}
+              <div className="mt-4 border-t border-slate-200 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setAdvancedOpen((v) => !v)}
+                  aria-expanded={advancedOpen}
+                  aria-controls="advanced-options-panel"
+                  className="w-full flex items-center justify-between gap-2 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+                >
+                  <span>Advanced Options</span>
+                  <span
+                    aria-hidden="true"
+                    className={[
+                      'text-slate-400 transition-transform',
+                      advancedOpen ? 'rotate-180' : '',
+                    ].join(' ')}
+                  >
+                    ▾
+                  </span>
+                </button>
+                {advancedOpen && (
+                  <div id="advanced-options-panel" className="mt-3">
+                    {/* Transform text → PDF */}
+                    <button
+                      type="button"
+                      onClick={() => setTransformOpen(true)}
+                      className="group w-full flex items-center gap-4 p-4 border border-slate-200 rounded-xl text-left hover:border-sky-400 hover:bg-sky-50/60 transition-colors"
+                    >
+                      <div className="shrink-0 w-12 h-12 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center text-2xl">
+                        ✎
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-slate-900">Transform text into a PDF</div>
+                        <div className="text-sm text-slate-500">
+                          Paste Markdown — headings, lists, tables &amp; code blocks
+                        </div>
+                      </div>
+                      <span className="ml-auto text-slate-400 group-hover:text-sky-700 transition-colors" aria-hidden="true">
+                        →
+                      </span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <RecentFilesList />
