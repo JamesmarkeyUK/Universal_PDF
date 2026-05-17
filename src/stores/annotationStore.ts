@@ -24,6 +24,7 @@ interface AnnotationState {
   remove: (id: string) => void
   clearPage: (pageIndex: number) => void
   clearAll: () => void
+  remapPages: (indexMap: Map<number, number>) => void
   undo: () => void
   redo: () => void
 }
@@ -140,6 +141,15 @@ export const useAnnotationStore = create<AnnotationState>((set) => ({
   clearAll: () =>
     set((s) => ({
       annotations: [],
+      selectedId: null,
+      past: pushPast(s.past, s.annotations),
+      future: []
+    })),
+  remapPages: (indexMap) =>
+    set((s) => ({
+      annotations: s.annotations
+        .filter((a) => indexMap.has(a.pageIndex))
+        .map((a) => ({ ...a, pageIndex: indexMap.get(a.pageIndex)! } as Annotation)),
       selectedId: null,
       past: pushPast(s.past, s.annotations),
       future: []
