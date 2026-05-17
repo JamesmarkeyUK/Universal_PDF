@@ -252,6 +252,8 @@ function PageThumb({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
+      style={{ cursor: busy ? 'wait' : 'grab' }}
+      title="Drag to reorder"
     >
       {dropIndicator === 'before' && (
         <div className="absolute left-1 right-1 -top-1 h-0.5 bg-orange-500 rounded pointer-events-none z-10" />
@@ -277,27 +279,27 @@ function PageThumb({
         <span className="text-xs text-slate-500">Page {index + 1}</span>
       </button>
 
-      {/* Action overlay — always visible on touch, fades in on hover for desktop. */}
-      <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity">
+      {/* Action overlay — always visible so the controls are discoverable. */}
+      <div className="absolute top-2 right-2 flex flex-col gap-1 z-20">
         <button
           type="button"
           onClick={actionHandler(onDelete)}
           disabled={!canDelete}
           title="Delete page"
           aria-label={`Delete page ${index + 1}`}
-          className="w-6 h-6 rounded-full bg-white/95 text-red-600 hover:bg-red-600 hover:text-white border border-slate-300 shadow text-xs leading-none flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-6 h-6 rounded-full bg-white text-red-600 hover:bg-red-600 hover:text-white border border-slate-300 shadow text-xs leading-none flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
         >
           ✕
         </button>
       </div>
-      <div className="absolute top-2 left-2 flex flex-col gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity">
+      <div className="absolute top-2 left-2 flex flex-col gap-1 z-20">
         <button
           type="button"
           onClick={actionHandler(onMoveUp)}
           disabled={!canMoveUp}
           title="Move page up"
           aria-label={`Move page ${index + 1} up`}
-          className="w-6 h-6 rounded-full bg-white/95 text-slate-700 hover:bg-slate-700 hover:text-white border border-slate-300 shadow text-xs leading-none flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-6 h-6 rounded-full bg-white text-slate-700 hover:bg-slate-700 hover:text-white border border-slate-300 shadow text-xs leading-none flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
         >
           ↑
         </button>
@@ -307,7 +309,7 @@ function PageThumb({
           disabled={!canMoveDown}
           title="Move page down"
           aria-label={`Move page ${index + 1} down`}
-          className="w-6 h-6 rounded-full bg-white/95 text-slate-700 hover:bg-slate-700 hover:text-white border border-slate-300 shadow text-xs leading-none flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-6 h-6 rounded-full bg-white text-slate-700 hover:bg-slate-700 hover:text-white border border-slate-300 shadow text-xs leading-none flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
         >
           ↓
         </button>
