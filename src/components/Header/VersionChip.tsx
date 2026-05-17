@@ -4,13 +4,17 @@ import { useChangelog, type ProductCode } from '@unisim/sdk'
 
 const CHANGELOG_REPO_URL = 'https://github.com/universal-simulation-ltd/universal-suite-changelog'
 
-const PRODUCT_CHIP: Record<ProductCode | 'suite', { label: string; classes: string }> = {
+// SUITE_CHIP is the always-present fallback. PRODUCT_CHIP is Partial so new
+// ProductCode values (workplace_assess, central, etc.) don't break the build
+// until/unless their chip styling is filled in here.
+const SUITE_CHIP = { label: 'Suite', classes: 'bg-slate-200 text-slate-700 ring-slate-300' } as const
+const PRODUCT_CHIP: Partial<Record<ProductCode | 'suite', { label: string; classes: string }>> = {
   pdf:          { label: 'PDF',          classes: 'bg-orange-100 text-orange-700 ring-orange-200' },
   webinar:      { label: 'Webinar',      classes: 'bg-sky-100 text-sky-700 ring-sky-200' },
   exports:      { label: 'Exports',      classes: 'bg-emerald-100 text-emerald-700 ring-emerald-200' },
   cyber_assess: { label: 'Cyber Assess', classes: 'bg-rose-100 text-rose-700 ring-rose-200' },
   ergo_assess:  { label: 'Ergo Assess',  classes: 'bg-violet-100 text-violet-700 ring-violet-200' },
-  suite:        { label: 'Suite',        classes: 'bg-slate-200 text-slate-700 ring-slate-300' },
+  suite:        SUITE_CHIP,
 }
 
 const TYPE_BADGE: Record<string, string> = {
@@ -114,7 +118,7 @@ export default function VersionChip() {
                 </div>
                 <ul className="space-y-2">
                   {release.entries.map((entry, i) => {
-                    const productChip = PRODUCT_CHIP[entry.product] ?? PRODUCT_CHIP.suite
+                    const productChip = PRODUCT_CHIP[entry.product] ?? SUITE_CHIP
                     return (
                       <li key={i} className="text-xs text-slate-700 leading-snug">
                         <span className="inline-flex items-center gap-1 mr-1.5 align-middle">
